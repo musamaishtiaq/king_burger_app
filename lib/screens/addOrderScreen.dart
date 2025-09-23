@@ -51,14 +51,16 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       _isCashOnDelivery = widget.order!.isCashOnDelivery;
       _fetchOrderItems(widget.order!.id!);
     } else {
-      _orderNumber = DateFormat('kkmmss').format(_currentDateTime);
-      _dateTime = DateFormat('yyyy-MM-dd hh:mm:ss a').format(_currentDateTime);
+      _dateTime = DateFormat('yyyy-MM-dd hh:mm:ss').format(_currentDateTime);
     }
   }
 
   Future<void> _fetchCategories() async {
+    if (widget.order == null) {
+      _orderNumber = "${await _dbHelper.getNextOrderNo()}";
+    }
     final cats = await _dbHelper.getCategories();
-    setState(() => _categories = cats);
+    setState(() => _categories = cats.reversed.toList());
   }
 
   Future<void> _fetchProducts() async {

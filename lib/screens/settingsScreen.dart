@@ -74,7 +74,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _saveSettings() async {
+  Future<void> _setSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
         'timeLimit', '$_selectedHour:$_selectedMinute $_selectedAmPm');
@@ -92,11 +92,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setBool('intOrderItemsFull', _intOrderItemsFull);
     await prefs.setBool('intOrderItemsCount', _intOrderItemsCount);
     await prefs.setBool('intPayment', _intPayment);
+  }
 
+  Future<void> _saveSettings() async {
+    await _setSettings();
     _showDialog('Settings saved successfully!');
   }
 
   Future<void> _resetSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+
     _selectedHour = '09';
     _selectedMinute = '00';
     _selectedAmPm = 'AM';
@@ -114,7 +119,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _intOrderItemsCount = true;
     _intPayment = true;
 
-    await _saveSettings();
+    await _setSettings();
+    setState(() {
+      _isLoading = false;
+    });
     _showDialog('Settings reset to default successfully!');
   }
 
@@ -168,6 +176,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Settings"),
+      ),
       body: Form(
         key: _formKey,
         child: Padding(

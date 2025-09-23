@@ -24,7 +24,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   Future<void> _fetchOrders() async {
-    final orders = await _dbHelper.getOrders();
+    _orderItems = [];
+    final orders = await _dbHelper.getShiftOrders();
     for (var order in orders) {
       var orderItems = await _dbHelper.getOrderItems(order.id!);
       _orderItems.addAll(orderItems);

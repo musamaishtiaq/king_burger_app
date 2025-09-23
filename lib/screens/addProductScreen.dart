@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:king_burger_app/models/category.dart';
 
+import '../models/category.dart';
 import '../models/product.dart';
 import '../widgets/dbHelper.dart';
 
@@ -15,20 +15,22 @@ class AddProductScreen extends StatefulWidget {
 }
 
 class _AddProductScreenState extends State<AddProductScreen> {
-  DbHelper _dbHelper = DbHelper();
+  final DbHelper _dbHelper = DbHelper();
   final _formKey = GlobalKey<FormState>();
-  final _nameFocusNode = FocusNode();
-  final _priceFocusNode = FocusNode();
-  final _infoFocusNode = FocusNode();
+
   double totalPrice = 0.0;
   String _name = '';
   double _price = 0.0;
   String _info = '';
   bool _isDeal = false;
-  List<Product> _nonDealProducts = [];
-  List<int>? _selectedProductsId = [];
-  List<Category> _categories = []; // from DB (id, name)
-  int? _selectedCategoryId;
+
+  List<Product> _allNonDealProducts = [];    // all products
+  List<Product> _filteredProducts = [];      // products filtered by category
+  List<int> _selectedProductsId = [];
+
+  List<Category> _categories = [];
+  int? _selectedCategoryId;                  // for product itself
+  int? _selectedDealCategoryId;              // for filtering deals
 
   @override
   void initState() {
@@ -39,45 +41,49 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _info = widget.product!.info;
       _isDeal = widget.product!.isDeal;
       if (_isDeal && widget.product!.productList != null) {
-        _selectedProductsId?.addAll(widget.product!.productList!);
+        _selectedProductsId.addAll(widget.product!.productList!);
       }
     }
-    if (_isDeal) {
-      _fetchNonDealProducts();
-    }
     _fetchCategories();
+    if (_isDeal) _fetchNonDealProducts();
   }
 
   Future<void> _fetchCategories() async {
-    final categories = await _dbHelper.getCategories(); // return List<Map>
+    final cats = await _dbHelper.getCategories();
     setState(() {
-      _categories = categories;
+      _categories = cats.reversed.toList();
+      if (widget.product != null) {
+        _selectedCategoryId = widget.product!.categoryId;
+      }
     });
-
-    if (widget.product != null) {
-      _selectedCategoryId = widget.product!.categoryId;
-    }
   }
 
   Future<void> _fetchNonDealProducts() async {
-    _nonDealProducts = await _dbHelper.getNonDealProducts();
-    _nonDealProducts = _nonDealProducts.reversed.toList();
-
-    for (var id in _selectedProductsId!) {
-      final product =
-          _nonDealProducts.firstWhere((product) => product.id == id);
-      if (product != null) _totalPrice(product.price, true);
-    }
-  }
-
-  Future<void> _totalPrice(double price, bool isAdded) async {
+    final prods = await _dbHelper.getNonDealProducts();
     setState(() {
-      if (isAdded) {
-        totalPrice += price;
-      } else {
-        totalPrice -= price;
+      _allNonDealProducts = prods.reversed.toList();
+      if (_categories.isNotEmpty) {
+        _selectedDealCategoryId ??= _categories.first.id; // default first category
+        _filterDealProducts();
+      }
+      // Precalculate total price if editing
+      for (var id in _selectedProductsId) {
+        final p = _allNonDealProducts.firstWhere((e) => e.id == id, orElse: () => Product(categoryId: 0, name: '', price: 0, info: ''));
+        if (p.id != null) totalPrice += p.price;
       }
     });
+  }
+
+  void _filterDealProducts() {
+    setState(() {
+      _filteredProducts = _allNonDealProducts
+          .where((p) => p.categoryId == _selectedDealCategoryId)
+          .toList();
+    });
+  }
+
+  void _updateTotal(double price, bool add) {
+    setState(() => totalPrice += add ? price : -price);
   }
 
   Future<void> _saveForm() async {
@@ -93,12 +99,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         productList: _isDeal ? _selectedProductsId : null,
       );
       if (widget.product == null) {
-        print("-----Add Product-----");
-        print(product.toString());
         await _dbHelper.insertProduct(product);
       } else {
-        print("-----Update Product-----");
-        print(product.toString());
         await _dbHelper.updateProduct(product);
       }
       widget.onSave();
@@ -109,167 +111,155 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.product == null ? 'Add Product' : 'Edit Product'),
-      ),
+      appBar: AppBar(title: Text(widget.product == null ? 'Add Item' : 'Edit Item')),
       body: Form(
         key: _formKey,
         child: Padding(
           padding: const EdgeInsets.all(15.0),
           child: Column(
             children: [
+              TextFormField(
+                initialValue: _name,
+                decoration: const InputDecoration(labelText: 'Item Name'),
+                validator: (v) => v == null || v.isEmpty ? 'Enter item name' : null,
+                onSaved: (v) => _name = v!,
+              ),
+              DropdownButtonFormField<int>(
+                value: _selectedCategoryId,
+                items: _categories
+                    .map((cat) => DropdownMenuItem(value: cat.id, child: Text(cat.name)))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedCategoryId = v),
+                decoration: const InputDecoration(labelText: 'Select Category'),
+                validator: (v) => v == null ? 'Please select category' : null,
+              ),
+              TextFormField(
+                initialValue: _price.toString(),
+                decoration: const InputDecoration(labelText: 'Price'),
+                keyboardType: TextInputType.number,
+                validator: (v) => v == null || v.isEmpty ? 'Enter price' : null,
+                onSaved: (v) => _price = double.parse(v!),
+              ),
+              TextFormField(
+                initialValue: _info,
+                decoration: const InputDecoration(labelText: 'Info'),
+                onSaved: (v) => _info = v ?? '',
+              ),
               SwitchListTile(
                 title: const Text('Is Deal'),
                 value: _isDeal,
                 onChanged: (value) {
                   setState(() {
                     _isDeal = value;
-                    if (value) {
-                      _fetchNonDealProducts();
-                    }
+                    if (value) _fetchNonDealProducts();
                   });
                 },
               ),
               if (_isDeal) ...[
+                SizedBox(
+                  height: 45,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length,
+                    itemBuilder: (ctx, index) {
+                      final cat = _categories[index];
+                      final isSelected = cat.id == _selectedDealCategoryId;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedDealCategoryId = cat.id;
+                            _filterDealProducts();
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.blue : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Center(
+                            child: Text(cat.name,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+
                 Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Select Items for Deal',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            '${_selectedProductsId!.length} x ',
-                            style: const TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'Rs. ${totalPrice.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ]),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Select Items for Deal',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Row(
+                      children: [
+                        Text('${_selectedProductsId.length} x ',
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text('Rs. ${totalPrice.toStringAsFixed(0)}',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+
                 Expanded(
                   child: Container(
                     color: Colors.grey[200],
                     child: ListView.builder(
-                        itemCount: _nonDealProducts.length,
-                        itemBuilder: (context, index) {
-                          final product = _nonDealProducts[index];
-                          final existingProduct = _selectedProductsId!
-                              .where((id) => id == product.id)
-                              .length;
+                      itemCount: _filteredProducts.length,
+                      itemBuilder: (ctx, index) {
+                        final product = _filteredProducts[index];
+                        final count = _selectedProductsId
+                            .where((id) => id == product.id)
+                            .length;
 
-                          return ListTile(
-                            title: Text(product.name),
-                            subtitle:
-                                Text(product.price.toStringAsFixed(0)),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.remove),
-                                  onPressed: () {
-                                    setState(() {
-                                      if (_selectedProductsId != null &&
-                                          existingProduct > 0) {
-                                        _totalPrice(product.price, false);
-                                        _selectedProductsId!.remove(product.id);
+                        return ListTile(
+                          title: Text(product.name),
+                          subtitle: Text('Rs. ${product.price.toStringAsFixed(0)}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove),
+                                onPressed: count > 0
+                                    ? () {
+                                        setState(() {
+                                          _selectedProductsId.remove(product.id);
+                                          _updateTotal(product.price, false);
+                                        });
                                       }
-                                    });
-                                  },
-                                ),
-                                Text(existingProduct.toString() ?? '0'),
-                                IconButton(
-                                  icon: const Icon(Icons.add),
-                                  onPressed: () {
-                                    setState(() {
-                                      _totalPrice(product.price, true);
-                                      _selectedProductsId!.add(product.id!);
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
+                                    : null,
+                              ),
+                              Text('$count'),
+                              IconButton(
+                                icon: const Icon(Icons.add),
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedProductsId.add(product.id!);
+                                    _updateTotal(product.price, true);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
-              TextFormField(
-                focusNode: _nameFocusNode,
-                initialValue: _name,
-                decoration: const InputDecoration(labelText: 'Product Name'),
-                textInputAction: TextInputAction.next,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a product name';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _name = value!;
-                },
-              ),
-              DropdownButtonFormField<int>(
-                value: _selectedCategoryId,
-                items: _categories.map((cat) {
-                  return DropdownMenuItem<int>(
-                    value: cat.id as int,
-                    child: Text(cat.name),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategoryId = value;
-                  });
-                },
-                decoration: const InputDecoration(labelText: 'Select Category'),
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a category';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _selectedCategoryId = value;
-                },
-              ),
-              TextFormField(
-                focusNode: _priceFocusNode,
-                initialValue: _price.toString(),
-                decoration: const InputDecoration(labelText: 'Price'),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a price';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _price = double.parse(value!);
-                },
-              ),
-              TextFormField(
-                focusNode: _infoFocusNode,
-                initialValue: _info,
-                decoration: const InputDecoration(labelText: 'Info'),
-                textInputAction: TextInputAction.next,
-                onSaved: (value) {
-                  _info = value!;
-                },
-              ),
               const SizedBox(height: 15),
               ElevatedButton(
                 onPressed: _saveForm,
-                child: Text(
-                    widget.product == null ? 'Save Product' : 'Update Product'),
+                child: Text(widget.product == null ? 'Save Item' : 'Update Item'),
               ),
             ],
           ),

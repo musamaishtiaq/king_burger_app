@@ -24,7 +24,6 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    Navigator.of(context).pop(); // Close the drawer
   }
 
   void _openSettings() {

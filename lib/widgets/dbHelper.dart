@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/category.dart';
@@ -8,7 +11,7 @@ import '../models/product.dart';
 
 class DbHelper {
   static final DbHelper _instance = DbHelper._internal();
-  static Database? _database;
+  static Database? _database; 
 
   factory DbHelper() {
     return _instance;
@@ -157,6 +160,77 @@ class DbHelper {
   }
 
   // Order operations
+  Future<TimeOfDay> getSavedShiftStartTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('timeLimit') ?? '09:00 AM';  // default 9 AM
+    // saved format: HH:MM AM/PM  (e.g. "09:15 PM")
+
+    final parts = saved.split(RegExp(r'[: ]')); // ['09','15','PM']
+    final hour = int.parse(parts[0]);
+    final minute = int.parse(parts[1]);
+    final ampm = parts[2];
+
+    // Convert to 24-hour
+    int hour24 = hour % 12;
+    if (ampm == 'PM') hour24 += 12;
+
+    return TimeOfDay(hour: hour24, minute: minute);
+  }
+
+  Future<DateTime> getShiftStart() async {
+    final now = DateTime.now();
+    final savedTime = await getSavedShiftStartTime();
+
+    final todayStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      savedTime.hour,
+      savedTime.minute,
+    );
+
+    // If current time is *before* today’s shift start,
+    // we belong to yesterday’s shift.
+    return now.isBefore(todayStart)
+        ? todayStart.subtract(const Duration(days: 1))
+        : todayStart;
+  }
+
+  Future<DateTime> getShiftEnd() async {
+    final start = await getShiftStart();
+    return start.add(const Duration(hours: 24));
+  }
+
+  Future<List<Order>> getShiftOrders() async {
+    final db = await database;
+    final start = await getShiftStart();
+    final end   = await getShiftEnd();
+
+    final result = await db.query(
+      'orders',
+      where: 'dateTime >= ? AND dateTime < ?',
+      whereArgs: [DateFormat('yyyy-MM-dd HH:mm:ss').format(start), DateFormat('yyyy-MM-dd HH:mm:ss').format(end)],
+    );
+
+    return result.isNotEmpty
+        ? result.map((o) => Order.fromMap(o)).toList()
+        : [];
+  }
+
+  Future<int> getNextOrderNo() async {
+    final db = await database;
+    final start = await getShiftStart();
+    final end   = await getShiftEnd();
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM orders WHERE dateTime >= ? AND dateTime < ?',
+      [DateFormat('yyyy-MM-dd HH:mm:ss').format(start), DateFormat('yyyy-MM-dd HH:mm:ss').format(end)],
+    );
+
+    final count = Sqflite.firstIntValue(result) ?? 0;
+    return count + 1;
+  }
+
   Future<void> insertOrder(Order order, List<OrderItem> orderItems) async {
     print("-----Db Add Order-----");
     print(order);

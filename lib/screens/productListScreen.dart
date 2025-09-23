@@ -15,7 +15,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   List<Category> _categories = [];
   int? _selectedCategoryId;
   List<Product> _products = [];
-  bool _showDeals = false;
 
   @override
   void initState() {
@@ -53,9 +52,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var filtered = _products.where((p) => p.isDeal == _showDeals);
+    var filtered = _products.toList();
     if (_selectedCategoryId != null) {
-      filtered = filtered.where((p) => p.categoryId == _selectedCategoryId);
+      filtered = filtered.where((p) => p.categoryId == _selectedCategoryId).toList();
     }
     final filteredProducts = filtered.toList();
 
@@ -144,7 +143,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 : Colors.white,
                             child: ListTile(
                               title: Text(product.name),
-                              subtitle: _showDeals
+                              subtitle: product.isDeal
                                   ? Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -193,36 +192,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
           );
         },
         child: const Icon(Icons.add),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _showDeals = false;
-                });
-              },
-              child: Text('Items'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: !_showDeals ? Colors.blue : Colors.grey,
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _showDeals = true;
-                });
-              },
-              child: Text('Deals'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _showDeals ? Colors.blue : Colors.grey,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
