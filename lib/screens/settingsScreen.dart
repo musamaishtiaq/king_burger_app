@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../screens/salesReportScreen.dart';
 import '../widgets/dropdownField.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -38,6 +39,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _intOrderItemsCount = true;
   bool _intPayment = true;
 
+  bool _enableDelete = false;
+  String _appLetter = 'A';
+  int _orderNoMaxLength = 4;
+
+  final List<String> _letters =
+      List.generate(26, (i) => String.fromCharCode(65 + i));
+  final List<String> _orderLengthOptions = ['3', '4', '5', '6'];
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +78,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _intOrderItemsCount = prefs.getBool('intOrderItemsCount') ?? true;
     _intPayment = prefs.getBool('intPayment') ?? true;
 
+    _enableDelete = prefs.getBool('enableDelete') ?? false;
+    _appLetter = prefs.getString('appLetter') ?? 'A';
+    _orderNoMaxLength = prefs.getInt('orderNoMaxLength') ?? 4;
+
     Timer(const Duration(milliseconds: 300), () {
       setState(() => _isLoading = false);
     });
@@ -92,6 +105,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setBool('intOrderItemsFull', _intOrderItemsFull);
     await prefs.setBool('intOrderItemsCount', _intOrderItemsCount);
     await prefs.setBool('intPayment', _intPayment);
+
+    await prefs.setBool('enableDelete', _enableDelete);
+    await prefs.setString('appLetter', _appLetter);
+    await prefs.setInt('orderNoMaxLength', _orderNoMaxLength);
   }
 
   Future<void> _saveSettings() async {
@@ -118,6 +135,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _intOrderItemsFull = false;
     _intOrderItemsCount = true;
     _intPayment = true;
+
+    _enableDelete = false;
+    _appLetter = 'A';
+    _orderNoMaxLength = 4;
 
     await _setSettings();
     setState(() {
@@ -185,6 +206,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
+              SwitchListTile(
+                title: const Text('Enable Delete Functionality'),
+                value: _enableDelete,
+                onChanged: (val) {
+                  setState(() => _enableDelete = val);
+                },
+              ),
+              DropdownField(
+                label: 'Set App Letter',
+                value: _appLetter,
+                items: _letters,
+                onChanged: (val) {
+                  setState(() => _appLetter = val!);
+                },
+              ),
+              DropdownField(
+                label: 'Order No Max Length',
+                value: _orderNoMaxLength.toString(),
+                items: _orderLengthOptions,
+                onChanged: (val) {
+                  setState(() => _orderNoMaxLength = int.parse(val!));
+                },
+              ),              
+              const SizedBox(height: 15),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -220,7 +265,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
               // Customer Slip Section
               _buildSlipSection(
                 title: 'Customer Slip',
@@ -279,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -302,6 +347,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: const Text('Reset Settings'),
                   ),
                 ],
+              ),
+              const SizedBox(height: 15),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.blueAccent,
+                    ),
+                    icon: const Icon(Icons.bar_chart),
+                    label: const Text(
+                      'View Sales Report',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SalesReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ],
           ),

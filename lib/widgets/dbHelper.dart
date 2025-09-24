@@ -11,7 +11,7 @@ import '../models/product.dart';
 
 class DbHelper {
   static final DbHelper _instance = DbHelper._internal();
-  static Database? _database; 
+  static Database? _database;
 
   factory DbHelper() {
     return _instance;
@@ -162,7 +162,7 @@ class DbHelper {
   // Order operations
   Future<TimeOfDay> getSavedShiftStartTime() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('timeLimit') ?? '09:00 AM';  // default 9 AM
+    final saved = prefs.getString('timeLimit') ?? '09:00 AM'; // default 9 AM
     // saved format: HH:MM AM/PM  (e.g. "09:15 PM")
 
     final parts = saved.split(RegExp(r'[: ]')); // ['09','15','PM']
@@ -204,12 +204,15 @@ class DbHelper {
   Future<List<Order>> getShiftOrders() async {
     final db = await database;
     final start = await getShiftStart();
-    final end   = await getShiftEnd();
+    final end = await getShiftEnd();
 
     final result = await db.query(
       'orders',
       where: 'dateTime >= ? AND dateTime < ?',
-      whereArgs: [DateFormat('yyyy-MM-dd HH:mm:ss').format(start), DateFormat('yyyy-MM-dd HH:mm:ss').format(end)],
+      whereArgs: [
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(start),
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(end)
+      ],
     );
 
     return result.isNotEmpty
@@ -217,18 +220,47 @@ class DbHelper {
         : [];
   }
 
-  Future<int> getNextOrderNo() async {
+  Future<String> getNextOrderNo() async {
+    final prefs = await SharedPreferences.getInstance();
     final db = await database;
     final start = await getShiftStart();
-    final end   = await getShiftEnd();
+    final end = await getShiftEnd();
+
+    final appLetter = prefs.getString('appLetter') ?? 'A';
+    final orderNoMaxLength = prefs.getInt('orderNoMaxLength') ?? 4;
 
     final result = await db.rawQuery(
       'SELECT COUNT(*) as cnt FROM orders WHERE dateTime >= ? AND dateTime < ?',
-      [DateFormat('yyyy-MM-dd HH:mm:ss').format(start), DateFormat('yyyy-MM-dd HH:mm:ss').format(end)],
+      [
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(start),
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(end)
+      ],
     );
 
     final count = Sqflite.firstIntValue(result) ?? 0;
-    return count + 1;
+    return "${appLetter}_${(count + 1).toString().padLeft(orderNoMaxLength, '0')}";
+  }
+
+  Future<List<Map<String, dynamic>>> getSalesReport(
+      DateTime start, DateTime end) async {
+    final db = await database;
+
+    final startStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(start); // 2025-09-22T00:00:00
+    final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
+
+    return await db.rawQuery('''
+    SELECT 
+      p.id AS productId,
+      p.name AS productName,
+      SUM(oi.quantity) AS totalQty,
+      SUM(oi.quantity * p.price) AS totalPrice
+    FROM order_items oi
+    JOIN products p ON p.id = oi.productId
+    JOIN orders o ON o.id = oi.orderId
+    WHERE o.dateTime BETWEEN ? AND ?
+    GROUP BY p.id, p.name
+    ORDER BY totalQty DESC
+  ''', [startStr, endStr]);
   }
 
   Future<void> insertOrder(Order order, List<OrderItem> orderItems) async {
@@ -263,7 +295,8 @@ class DbHelper {
 
   Future<List<OrderItem>> getOrderItems(int orderId) async {
     final db = await database;
-    var result = await db.query('order_items', where: 'orderId = ?', whereArgs: [orderId]);
+    var result = await db
+        .query('order_items', where: 'orderId = ?', whereArgs: [orderId]);
     return result.isNotEmpty
         ? result.map((item) => OrderItem.fromMap(item)).toList()
         : [];
@@ -319,7 +352,8 @@ class DbHelper {
 
   Future<List<OrderItem>> getOrderAllItems(int orderId) async {
     final db = await database;
-    var result = await db.query('order_items', where: 'orderId = ?', whereArgs: [orderId]);
+    var result = await db
+        .query('order_items', where: 'orderId = ?', whereArgs: [orderId]);
     return result.isNotEmpty
         ? result.map((o) => OrderItem.fromMap(o)).toList()
         : [];

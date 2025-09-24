@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/order.dart';
 import '../models/orderItem.dart';
@@ -16,11 +17,18 @@ class _OrderListScreenState extends State<OrderListScreen> {
   List<OrderItem> _orderItems = [];
   List<Product> _products = [];
   DbHelper _dbHelper = DbHelper();
+  bool? _canDelete;
 
   @override
   void initState() {
     super.initState();
+    _fetchDelete();
     _fetchOrders();
+  }
+
+  Future<void> _fetchDelete() async {
+    final prefs = await SharedPreferences.getInstance();
+    _canDelete = prefs.getBool('enableDelete') ?? false;
   }
 
   Future<void> _fetchOrders() async {
@@ -39,6 +47,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   Future<void> _refreshOrders() async {
+    await _fetchDelete();
     await _fetchOrders();
   }
 
@@ -66,106 +75,46 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 itemBuilder: (context, index) {
                   final order = _orders[index];
                   final orderItems = _getOrderItems(order.id!);
-                  return Dismissible(
-                    key: Key(order.id.toString()),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Icon(Icons.delete_forever, color: Colors.white),
-                    ),
-                    confirmDismiss: (direction) async {
-                      return await showDialog(
-                        context: context,
-                        builder: (context) {
-                          return AlertDialog(
-                            title: const Text('Confirm'),
-                            content: const Text(
-                                'Delete this order?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(true),
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    onDismissed: (direction) {
-                      _dbHelper.deleteOrder(order.id!);
-                    },
-                    child: Container(
-                      color: index % 2 == 0 ? Colors.grey[200] : Colors.white,
-                      child: ListTile(
-                        title: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Order #: ${order.orderNumber}'),
-                            Text('Date: ${order.dateTime}'),
-                            Text('Customer: ${order.customerDetails}'),
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Items in order:'),
-                            ...orderItems.map((item) {
-                                  final product = _getProductById(item.productId);
-                                  return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('${item.quantity} x ${product.name}'),
-                                      if (product.isDeal)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(left: 25),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text('Deal includes:'),
-                                              ...product.productList
-                                                      ?.toSet()
-                                                      .map((id) {
-                                                    final dealItem =
-                                                        _products.firstWhere(
-                                                            (p) => p.id == id);
-                                                    return Text(
-                                                        '${_getItemQuantity(product.productList, id)} x ${dealItem.name}');
-                                                  }).toList() ??
-                                                  [],
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  );
-                                }).toList() ??
-                                [],
-                          ],
-                        ),
-                        trailing:
-                            Text('Rs. ${order.totalPrice.toStringAsFixed(0)}'),
-                        onTap: () {
-                          _orderItems.clear();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AddOrderScreen(
-                                order: order,
-                                onSave: _fetchOrders,
-                              ),
-                            ),                            
-                          );
-                        },
-                      ),
-                    ),
-                  );
+                  return _canDelete!
+                      ? Dismissible(
+                          key: Key(order.id.toString()),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: const Icon(Icons.delete_forever,
+                                color: Colors.white),
+                          ),
+                          confirmDismiss: (direction) async {
+                            return await showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: const Text('Confirm'),
+                                  content: const Text('Delete this order?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          onDismissed: (direction) {
+                            _dbHelper.deleteOrder(order.id!);
+                          },
+                          child: _buildOrderTile(order, index, orderItems),
+                        )
+                      : _buildOrderTile(order, index, orderItems);
                 },
               ),
       ),
@@ -178,6 +127,68 @@ class _OrderListScreenState extends State<OrderListScreen> {
           );
         },
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildOrderTile(Order order, int index, List<OrderItem> orderItems) {
+    return Container(
+      color: index % 2 == 0 ? Colors.grey[200] : Colors.white,
+      child: ListTile(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Order #: ${order.orderNumber}'),
+            Text('Date: ${order.dateTime}'),
+            Text('Customer: ${order.customerDetails}'),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Items in order:'),
+            ...orderItems.map((item) {
+                  final product = _getProductById(item.productId);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${item.quantity} x ${product.name}'),
+                      if (product.isDeal)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 25),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Deal includes:'),
+                              ...product.productList?.toSet().map((id) {
+                                    final dealItem =
+                                        _products.firstWhere((p) => p.id == id);
+                                    return Text(
+                                        '${_getItemQuantity(product.productList, id)} x ${dealItem.name}');
+                                  }).toList() ??
+                                  [],
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                }).toList() ??
+                [],
+          ],
+        ),
+        trailing: Text('Rs. ${order.totalPrice.toStringAsFixed(0)}'),
+        onTap: () {
+          _orderItems.clear();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddOrderScreen(
+                order: order,
+                onSave: _fetchOrders,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

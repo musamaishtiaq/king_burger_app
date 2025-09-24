@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/category.dart';
 import '../models/product.dart';
@@ -15,12 +16,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
   List<Category> _categories = [];
   int? _selectedCategoryId;
   List<Product> _products = [];
+  bool? _canDelete;
 
   @override
   void initState() {
     super.initState();
+    _fetchDelete();
     _fetchCategories();
     _fetchProducts();
+  }
+
+  Future<void> _fetchDelete() async {
+    final prefs = await SharedPreferences.getInstance();
+    _canDelete = prefs.getBool('enableDelete') ?? false;
   }
 
   Future<void> _fetchCategories() async {
@@ -38,6 +46,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Future<void> _refreshProducts() async {
+    await _fetchDelete();
     await _fetchProducts();
   }
 
@@ -54,7 +63,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget build(BuildContext context) {
     var filtered = _products.toList();
     if (_selectedCategoryId != null) {
-      filtered = filtered.where((p) => p.categoryId == _selectedCategoryId).toList();
+      filtered =
+          filtered.where((p) => p.categoryId == _selectedCategoryId).toList();
     }
     final filteredProducts = filtered.toList();
 
@@ -101,82 +111,49 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       itemCount: filteredProducts.length,
                       itemBuilder: (context, index) {
                         final product = filteredProducts[index];
-                        return Dismissible(
-                          key: Key(product.id.toString()),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: const Icon(Icons.delete_forever,
-                                color: Colors.white),
-                          ),
-                          confirmDismiss: (direction) async {
-                            return await showDialog(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  title: const Text('Confirm'),
-                                  content: const Text('Delete this product?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                          onDismissed: (direction) {
-                            _deleteProduct(product.id!);
-                          },
-                          child: Container(
-                            color: index % 2 == 0
-                                ? Colors.grey[200]
-                                : Colors.white,
-                            child: ListTile(
-                              title: Text(product.name),
-                              subtitle: product.isDeal
-                                  ? Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Items in deal:'),
-                                        ...product.productList
-                                                ?.toSet()
-                                                .map((id) {
-                                              final item = _products.firstWhere(
-                                                  (p) => p.id == id);
-                                              return Text(
-                                                  '${_getItemQuantity(product.productList, id)} x ${item.name}');
-                                            }).toList() ??
-                                            [],
-                                      ],
-                                    )
-                                  : null,
-                              trailing: Text(
-                                  'Rs. ${product.price.toStringAsFixed(0)}'),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddProductScreen(
-                                      product: product,
-                                      onSave: _fetchProducts,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        );
+                        return _canDelete!
+                            ? Dismissible(
+                                key: Key(product.id.toString()),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20),
+                                  child: const Icon(Icons.delete_forever,
+                                      color: Colors.white),
+                                ),
+                                confirmDismiss: (direction) async {
+                                  return await showDialog(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        title: const Text('Confirm'),
+                                        content:
+                                            const Text('Delete this product?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context)
+                                                    .pop(false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(true),
+                                            child: const Text('Delete'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                onDismissed: (direction) {
+                                  _deleteProduct(product.id!);
+                                },
+                                child: _buildProductTile(product, index),
+                              )
+                            : _buildProductTile(product, index);
                       },
                     ),
             ),
@@ -210,6 +187,41 @@ class _ProductListScreenState extends State<ProductListScreen> {
         selectedColor: Colors.blue,
         backgroundColor: Colors.grey[300],
         labelStyle: TextStyle(color: selected ? Colors.white : Colors.black),
+      ),
+    );
+  }
+
+  Widget _buildProductTile(Product product, int index) {
+    return Container(
+      color: index % 2 == 0 ? Colors.grey[200] : Colors.white,
+      child: ListTile(
+        title: Text(product.name),
+        subtitle: product.isDeal
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Items in deal:'),
+                  ...product.productList?.toSet().map((id) {
+                        final item = _products.firstWhere((p) => p.id == id);
+                        return Text(
+                            '${_getItemQuantity(product.productList, id)} x ${item.name}');
+                      }).toList() ??
+                      [],
+                ],
+              )
+            : null,
+        trailing: Text('Rs. ${product.price.toStringAsFixed(0)}'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddProductScreen(
+                product: product,
+                onSave: _fetchProducts,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

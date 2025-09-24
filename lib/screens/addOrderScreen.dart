@@ -51,13 +51,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       _isCashOnDelivery = widget.order!.isCashOnDelivery;
       _fetchOrderItems(widget.order!.id!);
     } else {
-      _dateTime = DateFormat('yyyy-MM-dd hh:mm:ss').format(_currentDateTime);
+      _dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(_currentDateTime);
     }
   }
 
   Future<void> _fetchCategories() async {
     if (widget.order == null) {
-      _orderNumber = "${await _dbHelper.getNextOrderNo()}";
+      _orderNumber = await _dbHelper.getNextOrderNo();
     }
     final cats = await _dbHelper.getCategories();
     setState(() => _categories = cats.reversed.toList());
@@ -164,7 +164,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       ),
       body: Column(
         children: [
-          // 🔹 Top Tabs
           Row(
             children: [
               _buildTopTab('Items', 0),
@@ -172,8 +171,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             ],
           ),
           const Divider(height: 1),
-
-          // 🔹 Tab Body
           Expanded(
             child: _selectedTab == 0
                 ? _buildItemsTab(filteredProducts)
@@ -184,9 +181,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     );
   }
 
-  // ==============================
-  // 🔵 WIDGETS
-  // ==============================
   Widget _buildTopTab(String text, int index) {
     final selected = _selectedTab == index;
     return Expanded(
@@ -282,7 +276,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           Text('Total Price: Rs. ${_totalPrice.toStringAsFixed(0)}',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-
           TextFormField(
             initialValue: _orderNumber,
             readOnly: true,

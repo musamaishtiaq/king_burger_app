@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/category.dart';
 import '../widgets/dbHelper.dart';
@@ -12,11 +13,18 @@ class CategoryListScreen extends StatefulWidget {
 class _CategoryListScreenState extends State<CategoryListScreen> {
   DbHelper _dbHelper = DbHelper();
   List<Category> _categories = [];
+  bool? _canDelete;
 
   @override
   void initState() {
     super.initState();
+    _fetchDelete();
     _fetchCategories();
+  }
+
+  Future<void> _fetchDelete() async {
+    final prefs = await SharedPreferences.getInstance();
+    _canDelete = prefs.getBool('enableDelete') ?? false;
   }
 
   Future<void> _fetchCategories() async {
@@ -25,8 +33,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       _categories = categories.reversed.toList();
     });
   }
-  
+
   Future<void> _refreshCategories() async {
+    await _fetchDelete();
     await _fetchCategories();
   }
 
@@ -52,58 +61,46 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                 itemCount: filteredCategories.length,
                 itemBuilder: (context, index) {
                   final category = filteredCategories[index];
-                  return Dismissible(
-                    key: Key(category.id.toString()),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Icon(Icons.delete_forever, color: Colors.white),
-                    ),
-                    confirmDismiss: (direction) async {
-                      return await showDialog(
-                        context: context,
-                        builder: (context) {
-                          return AlertDialog(
-                            title: const Text('Confirm'),
-                            content: const Text(
-                                'Delete this category?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(true),
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    onDismissed: (direction) {
-                      _deleteCategory(category.id!);
-                    },
-                    child: Container(
-                      color: index % 2 == 0 ? Colors.grey[200] : Colors.white,
-                      child: ListTile(
-                        title: Text(category.name),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AddCategoryScreen(
-                                category: category,
-                                onSave: _fetchCategories,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  );
+                  return _canDelete!
+                      ? Dismissible(
+                          key: Key(category.id.toString()),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: const Icon(Icons.delete_forever,
+                                color: Colors.white),
+                          ),
+                          confirmDismiss: (direction) async {
+                            return await showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: const Text('Confirm'),
+                                  content: const Text('Delete this category?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          onDismissed: (direction) {
+                            _deleteCategory(category.id!);
+                          },
+                          child: _buildCategoryTile(category, index),
+                        )
+                      : _buildCategoryTile(category, index);
                 },
               ),
       ),
@@ -112,10 +109,31 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (context) => AddCategoryScreen(onSave: _fetchCategories)),
+                builder: (context) =>
+                    AddCategoryScreen(onSave: _fetchCategories)),
           );
         },
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildCategoryTile(Category category, int index) {
+    return Container(
+      color: index % 2 == 0 ? Colors.grey[200] : Colors.white,
+      child: ListTile(
+        title: Text(category.name),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddCategoryScreen(
+                category: category,
+                onSave: _fetchCategories,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
