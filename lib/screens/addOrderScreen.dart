@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:esc_pos_utils/esc_pos_utils.dart';
+import 'dart:typed_data';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:usb_serial/usb_serial.dart';
 
 import '../models/order.dart';
 import '../models/orderItem.dart';
@@ -30,6 +34,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   int _count = 0;
   DateTime _currentDateTime = DateTime.now();
 
+  bool? _customerSlipEnabled;
+  bool? _internalSlipEnabled;
+  bool? _custOrderDetails;
+  bool? _custOrderItemsFull;
+  bool? _custOrderItemsCount;
+  bool? _custPayment;
+  bool? _intOrderDetails;
+  bool? _intOrderItemsFull;
+  bool? _intOrderItemsCount;
+  bool? _intPayment;
+
   // Data
   List<Category> _categories = [];
   List<Product> _products = [];
@@ -42,6 +57,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   @override
   void initState() {
     super.initState();
+    _fetchPrintingChecks();
     _fetchCategories();
     _fetchProducts();
     if (widget.order != null) {
@@ -53,6 +69,21 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     } else {
       _dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(_currentDateTime);
     }
+  }
+
+  Future<void> _fetchPrintingChecks() async {
+    final prefs = await SharedPreferences.getInstance();
+    _customerSlipEnabled = prefs.getBool('customerSlipEnabled') ?? false;
+    _internalSlipEnabled = prefs.getBool('internalSlipEnabled') ?? false;
+    _custOrderDetails = prefs.getBool('custOrderDetails') ?? true;
+    _custOrderItemsFull = prefs.getBool('custOrderItemsFull') ?? true;
+    _custOrderItemsCount = prefs.getBool('custOrderItemsCount') ?? false;
+    _custPayment = prefs.getBool('custPayment') ?? true;
+    _intOrderDetails = prefs.getBool('intOrderDetails') ?? true;
+    _intOrderItemsFull = prefs.getBool('intOrderItemsFull') ?? false;
+    _intOrderItemsCount = prefs.getBool('intOrderItemsCount') ?? true;
+    _intPayment = prefs.getBool('intPayment') ?? true;
+    setState(() {});
   }
 
   Future<void> _fetchCategories() async {
@@ -129,6 +160,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     }
   }
 
+  Product _getProductById(int productId) {
+    return _products.firstWhere((item) => item.id == productId);
+  }
+
   void _saveOrder() async {
     if (_formKey.currentState!.validate() && _orderItems.isNotEmpty) {
       final newOrder = Order(
@@ -136,7 +171,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         customerDetails: _customerDetails,
         dateTime: _dateTime,
         totalPrice: _totalPrice,
-        isProcessed: widget.order?.isProcessed ?? false,
+        isProcessed: true,
         isCashOnDelivery: _isCashOnDelivery,
       );
 
@@ -145,6 +180,15 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       } else {
         newOrder.id = widget.order!.id;
         await _dbHelper.updateOrder(newOrder, _orderItems);
+      }
+
+      if (_customerSlipEnabled!) {
+        final bytes = await buildCustomerOrderSlip(newOrder, _orderItems);
+        await printSlip(bytes);
+      }
+      if (_internalSlipEnabled!) {
+        // final bytes = await buildCustomerOrderSlip(newOrder, _orderItems);
+        // await printSlip(bytes);
       }
 
       widget.onSave();
@@ -212,12 +256,14 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-            itemCount: _categories.length + 1,
+            // itemCount: _categories.length + 1,
+            itemCount: _categories.length,
             itemBuilder: (context, index) {
-              if (index == 0) {
-                return _categoryChip('All', null);
-              }
-              final cat = _categories[index - 1];
+              // if (index == 0) {
+              //   return _categoryChip('All', null);
+              // }
+              // final cat = _categories[index - 1];
+              final cat = _categories[index];
               return _categoryChip(cat.name, cat.id);
             },
           ),
@@ -230,7 +276,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               final product = filteredProducts[index];
               final existing = _orderItems.firstWhere(
                 (item) => item.productId == product.id,
-                orElse: () => OrderItem(orderId: 0, productId: 0, quantity: 0, price: 0),
+                orElse: () =>
+                    OrderItem(orderId: 0, productId: 0, quantity: 0, price: 0),
               );
               return ListTile(
                 title: Text(product.name),
@@ -272,9 +319,11 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             );
           }).toList(),
           const Divider(),
-          Text('Total Items: $_count', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text('Total Items: $_count',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
           Text('Total Price: Rs. ${_totalPrice.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           TextFormField(
             initialValue: _orderNumber,
@@ -294,7 +343,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             onChanged: (v) => _customerDetails = v,
           ),
           SwitchListTile(
-            title: const Text('Cash On Delivery'),
+            title: const Text('Home Delivery'),
             value: _isCashOnDelivery,
             onChanged: (v) => setState(() => _isCashOnDelivery = v),
           ),
@@ -323,5 +372,97 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         labelStyle: TextStyle(color: selected ? Colors.white : Colors.black),
       ),
     );
+  }
+
+  Future<List<int>> buildCustomerOrderSlip(
+      Order order, List<OrderItem> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final profile = await CapabilityProfile.load();
+    final generator = Generator(PaperSize.mm58, profile);
+    List<int> bytes = [];
+    final shopName = prefs.getString('storeName') ?? "My Store";
+
+    // ===== Order Details =====
+    if (_custOrderDetails!) {
+      bytes += generator.text(shopName,
+          styles: const PosStyles(
+              align: PosAlign.center, bold: true, height: PosTextSize.size2));
+      bytes += generator.text('Order #: ${order.orderNumber}');
+      bytes += generator.text('Date: ${order.dateTime}');
+      bytes += generator.text('Order Slip: For Customer');
+      if (order.isCashOnDelivery) {
+        bytes += generator.text('Customer: ${order.customerDetails}');
+        bytes += generator.text('Order Type: Home Delivery');
+      }
+      bytes += generator.hr();
+    }
+
+    // ===== Item List  =====
+    double grandTotal = 0;
+    if (_custOrderItemsFull!) {
+      for (var item in items) {
+        final name = _getProductById(item.productId).name;
+        final qty = item.quantity;
+        final price = item.price;
+        final lineTotal = qty * price;
+        grandTotal += lineTotal;
+
+        bytes += generator.row([
+          PosColumn(text: '$qty x $name', width: 8),
+          PosColumn(
+              text: lineTotal.toStringAsFixed(0),
+              width: 4,
+              styles: const PosStyles(align: PosAlign.right)),
+        ]);
+      }
+      bytes += generator.hr();
+    }
+
+    // ===== Item Count =====
+    if (_custOrderItemsCount!) {
+      for (var item in items) {
+        final name = item.productId;
+        final qty = item.quantity;
+        final price = item.price;
+        final lineTotal = qty * price;
+
+        bytes += generator.row([
+          PosColumn(text: '$qty x $name', width: 8),
+          PosColumn(
+              text: lineTotal.toStringAsFixed(0),
+              width: 4,
+              styles: const PosStyles(align: PosAlign.right)),
+        ]);
+      }
+      bytes += generator.hr();
+    }
+
+    // ===== Payment =====
+    if (_custPayment!) {
+      bytes += generator.row([
+        PosColumn(text: 'TOTAL', width: 8, styles: const PosStyles(bold: true)),
+        PosColumn(
+            text: grandTotal.toStringAsFixed(0),
+            width: 4,
+            styles: const PosStyles(align: PosAlign.right, bold: true)),
+      ]);
+      bytes += generator.text('Thank you for ordering!',
+          styles: const PosStyles(align: PosAlign.center));
+    }
+
+    bytes += generator.cut();
+    return bytes;
+  }
+
+  Future<void> printSlip(List<int> bytes) async {
+    final devices = await UsbSerial.listDevices();
+    final printer =
+        devices.firstWhere((d) => d.productName!.contains('TM-T90'));
+
+    UsbPort? port = await printer.create();
+    await port!.open();
+    await port.setDTR(true);
+    await port.write(Uint8List.fromList(bytes));
+    await port.close();
   }
 }

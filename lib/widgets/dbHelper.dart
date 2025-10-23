@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -245,7 +250,8 @@ class DbHelper {
       DateTime start, DateTime end) async {
     final db = await database;
 
-    final startStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(start); // 2025-09-22T00:00:00
+    final startStr =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(start); // 2025-09-22T00:00:00
     final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
 
     return await db.rawQuery('''
@@ -368,5 +374,78 @@ class DbHelper {
   Future<int> deleteOrderItem(int id) async {
     final db = await database;
     return await db.delete('order_items', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Backup & Restore operations
+  Future<void> exportBackup() async {
+    final db = await database;
+    final categories = await db.query('categories');
+    final exportData = {
+      'categories': await Future.wait(categories.map((cat) async {
+        final products = await db.query(
+          'products',
+          where: 'categoryId = ?',
+          whereArgs: [cat['id']],
+        );
+        return {
+          'id': cat['id'],
+          'name': cat['name'],
+          'products': products
+              .map((p) => {
+                    'id': p['id'],
+                    'name': p['name'],
+                    'price': p['price'],
+                    'info': p['info'] ?? '',
+                    'isDeal': p['isDeal'],
+                    'productList': p['productList'] ?? '[]'
+                  })
+              .toList()
+        };
+      }))
+    };
+
+    final backupData = jsonEncode({'Export Data': exportData});
+
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/pos_backup.txt');
+    await file.writeAsString(backupData);
+
+    print('Backup saved to: ${file.path}');
+  }
+
+  Future<void> importBackup() async {
+    final db = await database;
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.custom, allowedExtensions: ['txt', 'json']);
+    if (result == null) return;
+
+    final file = File(result.files.single.path!);
+    final jsonData = jsonDecode(await file.readAsString());
+
+    final batch = db.batch();
+
+    for (var cat in jsonData['categories']) {
+      // Insert category
+      int catId = await db.insert(
+          'categories', {'id': cat['id'], 'name': cat['name']},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+
+      for (var prod in cat['products']) {
+        int prodId = await db.insert(
+            'products',
+            {
+              'id': prod['id'],
+              'name': prod['name'],
+              'categoryId': catId,
+              'price': prod['price'],
+              'info': prod['info'],
+              'isDeal': prod['isDeal'] ? 1 : 0,
+              'productList': prod['productList'],
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    }
+    await batch.commit(noResult: true);
+    print('Backup restored successfully');
   }
 }

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/salesReportScreen.dart';
 import '../widgets/dropdownField.dart';
+import '../screens/printerSettingsScreen.dart';
+import '../screens/backupScreen.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -14,38 +16,16 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late bool _isLoading;
-  String _selectedHour = '09';
-  String _selectedMinute = '00';
-  String _selectedAmPm = 'AM';
-
-  final List<String> _hours =
-      List.generate(12, (index) => (index + 1).toString().padLeft(2, '0'));
-  final List<String> _minutes =
-      List.generate(60, (index) => index.toString().padLeft(2, '0'));
-  final List<String> _amPm = ['AM', 'PM'];
-
-  // Printing Settings
   bool _customerSlipEnabled = false;
   bool _internalSlipEnabled = false;
-
-  // Sections
   bool _custOrderDetails = true;
   bool _custOrderItemsFull = true;
   bool _custOrderItemsCount = false;
   bool _custPayment = true;
-
   bool _intOrderDetails = true;
   bool _intOrderItemsFull = false;
   bool _intOrderItemsCount = true;
   bool _intPayment = true;
-
-  bool _enableDelete = false;
-  String _appLetter = 'A';
-  int _orderNoMaxLength = 4;
-
-  final List<String> _letters =
-      List.generate(26, (i) => String.fromCharCode(65 + i));
-  final List<String> _orderLengthOptions = ['3', '4', '5', '6'];
 
   @override
   void initState() {
@@ -56,15 +36,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-
-    String savedTime = prefs.getString('timeLimit') ??
-        '$_selectedHour:$_selectedMinute $_selectedAmPm';
-    List<String> timeParts = savedTime.split(RegExp(r'[: ]'));
-    _selectedHour = timeParts[0].padLeft(2, '0');
-    _selectedMinute = timeParts[1].padLeft(2, '0');
-    _selectedAmPm = timeParts[2];
-
-    // Printing
     _customerSlipEnabled = prefs.getBool('customerSlipEnabled') ?? false;
     _internalSlipEnabled = prefs.getBool('internalSlipEnabled') ?? false;
 
@@ -78,10 +49,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _intOrderItemsCount = prefs.getBool('intOrderItemsCount') ?? true;
     _intPayment = prefs.getBool('intPayment') ?? true;
 
-    _enableDelete = prefs.getBool('enableDelete') ?? false;
-    _appLetter = prefs.getString('appLetter') ?? 'A';
-    _orderNoMaxLength = prefs.getInt('orderNoMaxLength') ?? 4;
-
     Timer(const Duration(milliseconds: 300), () {
       setState(() => _isLoading = false);
     });
@@ -89,10 +56,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _setSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        'timeLimit', '$_selectedHour:$_selectedMinute $_selectedAmPm');
-
-    // Printing
     await prefs.setBool('customerSlipEnabled', _customerSlipEnabled);
     await prefs.setBool('internalSlipEnabled', _internalSlipEnabled);
 
@@ -105,10 +68,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setBool('intOrderItemsFull', _intOrderItemsFull);
     await prefs.setBool('intOrderItemsCount', _intOrderItemsCount);
     await prefs.setBool('intPayment', _intPayment);
-
-    await prefs.setBool('enableDelete', _enableDelete);
-    await prefs.setString('appLetter', _appLetter);
-    await prefs.setInt('orderNoMaxLength', _orderNoMaxLength);
   }
 
   Future<void> _saveSettings() async {
@@ -118,11 +77,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _resetSettings() async {
     final prefs = await SharedPreferences.getInstance();
-
-    _selectedHour = '09';
-    _selectedMinute = '00';
-    _selectedAmPm = 'AM';
-
     _customerSlipEnabled = false;
     _internalSlipEnabled = false;
 
@@ -135,10 +89,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _intOrderItemsFull = false;
     _intOrderItemsCount = true;
     _intPayment = true;
-
-    _enableDelete = false;
-    _appLetter = 'A';
-    _orderNoMaxLength = 4;
 
     await _setSettings();
     setState(() {
@@ -168,215 +118,216 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSlipSection({
     required String title,
+    required String subtitle,
+    required IconData icon,
     required bool enabled,
     required ValueChanged<bool> onEnableChanged,
     required List<Widget> children,
   }) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: ExpansionTile(
-        title: SwitchListTile(
-          title:
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          value: enabled,
-          onChanged: onEnableChanged,
-        ),
-        children: enabled ? children : [],
+      child: Column(
+        children: [
+          SwitchListTile(
+            contentPadding: const EdgeInsets.all(16),
+            title: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: enabled
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey[600],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            value: enabled,
+            onChanged: onEnableChanged,
+          ),
+          if (enabled) ...[const Divider(height: 1), ...children],
+        ],
       ),
+    );
+  }
+
+  Widget _buildSettingTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+      ),
+      trailing: Switch(value: value, onChanged: onChanged),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settings"),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: Form(
         key: _formKey,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: const Text('Enable Delete Functionality'),
-                value: _enableDelete,
-                onChanged: (val) {
-                  setState(() => _enableDelete = val);
-                },
-              ),
-              DropdownField(
-                label: 'Set App Letter',
-                value: _appLetter,
-                items: _letters,
-                onChanged: (val) {
-                  setState(() => _appLetter = val!);
-                },
-              ),
-              DropdownField(
-                label: 'Order No Max Length',
-                value: _orderNoMaxLength.toString(),
-                items: _orderLengthOptions,
-                onChanged: (val) {
-                  setState(() => _orderNoMaxLength = int.parse(val!));
-                },
-              ),              
-              const SizedBox(height: 15),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  DropdownField(
-                    label: 'Hour',
-                    value: _selectedHour,
-                    items: _hours,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedHour = value!;
-                      });
-                    },
-                  ),
-                  DropdownField(
-                    label: 'Minute',
-                    value: _selectedMinute,
-                    items: _minutes,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedMinute = value!;
-                      });
-                    },
-                  ),
-                  DropdownField(
-                    label: 'AM/PM',
-                    value: _selectedAmPm,
-                    items: _amPm,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedAmPm = value!;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              // Customer Slip Section
-              _buildSlipSection(
-                title: 'Customer Slip',
-                enabled: _customerSlipEnabled,
-                onEnableChanged: (val) =>
-                    setState(() => _customerSlipEnabled = val),
-                children: [
-                  CheckboxListTile(
-                    title: const Text('Order Details'),
-                    value: _custOrderDetails,
-                    onChanged: (v) => setState(() => _custOrderDetails = v!),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Order Items (Full)'),
-                    value: _custOrderItemsFull,
-                    onChanged: (v) => setState(() => _custOrderItemsFull = v!),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Order Items (Count)'),
-                    value: _custOrderItemsCount,
-                    onChanged: (v) => setState(() => _custOrderItemsCount = v!),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Payment'),
-                    value: _custPayment,
-                    onChanged: (v) => setState(() => _custPayment = v!),
-                  ),
-                ],
-              ),
-              // Internal Slip Section
-              _buildSlipSection(
-                title: 'Internal Slip',
-                enabled: _internalSlipEnabled,
-                onEnableChanged: (val) =>
-                    setState(() => _internalSlipEnabled = val),
-                children: [
-                  CheckboxListTile(
-                    title: const Text('Order Details'),
-                    value: _intOrderDetails,
-                    onChanged: (v) => setState(() => _intOrderDetails = v!),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Order Items (Full)'),
-                    value: _intOrderItemsFull,
-                    onChanged: (v) => setState(() => _intOrderItemsFull = v!),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Order Items (Count)'),
-                    value: _intOrderItemsCount,
-                    onChanged: (v) => setState(() => _intOrderItemsCount = v!),
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Payment'),
-                    value: _intPayment,
-                    onChanged: (v) => setState(() => _intPayment = v!),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        _formKey.currentState!.save();
-                        _saveSettings();
-                      }
-                    },
-                    child: const Text('Save Settings'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _isLoading = true;
-                      });
-                      _resetSettings();
-                    },
-                    child: const Text('Reset Settings'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: Colors.blueAccent,
-                    ),
-                    icon: const Icon(Icons.bar_chart),
-                    label: const Text(
-                      'View Sales Report',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SalesReportScreen(),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Header Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.print,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                      );
-                    },
-                  ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Receipt Printing Settings',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Configure what information to include on customer and internal receipts',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            // Customer Slip Section
+            _buildSlipSection(
+              title: 'Customer Receipt',
+              subtitle: 'Settings for customer-facing receipts',
+              icon: Icons.receipt,
+              enabled: _customerSlipEnabled,
+              onEnableChanged: (val) =>
+                  setState(() => _customerSlipEnabled = val),
+              children: [
+                _buildSettingTile(
+                  title: 'Order Details',
+                  subtitle: 'Include order number, date, and customer info',
+                  value: _custOrderDetails,
+                  onChanged: (v) => setState(() => _custOrderDetails = v!),
+                ),
+                _buildSettingTile(
+                  title: 'Order Items (Full)',
+                  subtitle: 'Show complete item details with prices',
+                  value: _custOrderItemsFull,
+                  onChanged: (v) => setState(() => _custOrderItemsFull = v!),
+                ),
+                _buildSettingTile(
+                  title: 'Order Items (Count)',
+                  subtitle: 'Show only item counts without details',
+                  value: _custOrderItemsCount,
+                  onChanged: (v) => setState(() => _custOrderItemsCount = v!),
+                ),
+                _buildSettingTile(
+                  title: 'Payment Information',
+                  subtitle: 'Include total amount and payment method',
+                  value: _custPayment,
+                  onChanged: (v) => setState(() => _custPayment = v!),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Internal Slip Section
+            _buildSlipSection(
+              title: 'Internal Receipt',
+              subtitle: 'Settings for internal kitchen/management receipts',
+              icon: Icons.receipt_long,
+              enabled: _internalSlipEnabled,
+              onEnableChanged: (val) =>
+                  setState(() => _internalSlipEnabled = val),
+              children: [
+                _buildSettingTile(
+                  title: 'Order Details',
+                  subtitle: 'Include order number, date, and customer info',
+                  value: _intOrderDetails,
+                  onChanged: (v) => setState(() => _intOrderDetails = v!),
+                ),
+                _buildSettingTile(
+                  title: 'Order Items (Full)',
+                  subtitle: 'Show complete item details with prices',
+                  value: _intOrderItemsFull,
+                  onChanged: (v) => setState(() => _intOrderItemsFull = v!),
+                ),
+                _buildSettingTile(
+                  title: 'Order Items (Count)',
+                  subtitle: 'Show only item counts without details',
+                  value: _intOrderItemsCount,
+                  onChanged: (v) => setState(() => _intOrderItemsCount = v!),
+                ),
+                _buildSettingTile(
+                  title: 'Payment Information',
+                  subtitle: 'Include total amount and payment method',
+                  value: _intPayment,
+                  onChanged: (v) => setState(() => _intPayment = v!),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Action Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      _formKey.currentState!.save();
+                      _saveSettings();
+                    }
+                  },
+                  child: const Text('Save Settings'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoading = true;
+                    });
+                    _resetSettings();
+                  },
+                  child: const Text('Reset Settings'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );

@@ -4,6 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/addCategoryScreen.dart';
+import '../screens/settingsScreen.dart';
+import '../screens/printerSettingsScreen.dart';
+import '../screens/backupScreen.dart';
 
 class CategoryListScreen extends StatefulWidget {
   @override
@@ -53,6 +56,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     final filteredCategories = _categories.toList();
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Categories')),
       body: RefreshIndicator(
         onRefresh: _refreshCategories,
         child: filteredCategories.isEmpty
@@ -69,8 +73,10 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                             color: Colors.red,
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: const Icon(Icons.delete_forever,
-                                color: Colors.white),
+                            child: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.white,
+                            ),
                           ),
                           confirmDismiss: (direction) async {
                             return await showDialog(
@@ -104,16 +110,17 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                 },
               ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (context) =>
-                    AddCategoryScreen(onSave: _fetchCategories)),
+              builder: (context) => AddCategoryScreen(onSave: _fetchCategories),
+            ),
           );
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New Category'),
       ),
     );
   }
