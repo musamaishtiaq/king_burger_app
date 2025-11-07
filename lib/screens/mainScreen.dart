@@ -22,9 +22,6 @@ class _MainScreenState extends State<MainScreen> {
     ProductListScreen(),
     CategoryListScreen(),
     SalesReportScreen(),
-    SettingsScreen(),
-    PrinterSettingsScreen(),
-    BackupScreen(),
   ];
 
   @override
@@ -53,9 +50,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   title: Text(_getAppBarTitle()),
-      // ),
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
@@ -70,8 +64,8 @@ class _MainScreenState extends State<MainScreen> {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+              blurRadius: 8,
+              offset: const Offset(0, -1),
             ),
           ],
         ),
@@ -80,24 +74,32 @@ class _MainScreenState extends State<MainScreen> {
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed,
           selectedItemColor: Theme.of(context).colorScheme.secondary,
-          unselectedItemColor: Colors.grey[400],
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          unselectedItemColor: Colors.grey[500],
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
+          ),
           backgroundColor: Theme.of(context).colorScheme.primary,
+          elevation: 0,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long),
+              icon: Icon(Icons.receipt_long, size: 22),
               label: 'Orders',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2),
+              icon: Icon(Icons.inventory_2, size: 22),
               label: 'Products',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.category),
+              icon: Icon(Icons.category, size: 22),
               label: 'Category',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.analytics),
+              icon: Icon(Icons.analytics, size: 22),
               label: 'Reporting',
             ),
           ],

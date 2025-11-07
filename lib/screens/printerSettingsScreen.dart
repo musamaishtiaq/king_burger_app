@@ -128,122 +128,240 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading settings...'),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Printer Settings')),
+      appBar: AppBar(
+        title: const Text('Printer Settings'),
+        elevation: 0,
+      ),
       body: Form(
         key: _formKey,
-        child: Padding(
+        child: ListView(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              TextFormField(
-                initialValue: _storeName,
-                decoration: const InputDecoration(
-                  labelText: 'Store Name',
-                  border: OutlineInputBorder(),
+          children: [
+            // Store Information Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.store, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Store Information',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      initialValue: _storeName,
+                      decoration: const InputDecoration(
+                        labelText: 'Store Name',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      onChanged: (val) => _storeName = val,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Please enter a store name';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ),
-                onChanged: (val) => _storeName = val,
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Please enter a store name';
-                  }
-                  return null;
-                },
               ),
-              const SizedBox(height: 15),
-              SwitchListTile(
-                title: const Text('Enable Delete Functionality'),
-                value: _enableDelete,
-                onChanged: (val) {
-                  setState(() => _enableDelete = val);
-                },
+            ),
+            const SizedBox(height: 12),
+            // App Settings Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'App Settings',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Enable Delete Functionality'),
+                      subtitle: const Text('Allow deletion of orders, products, and categories'),
+                      value: _enableDelete,
+                      onChanged: (val) {
+                        setState(() => _enableDelete = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownField(
+                            label: 'App Letter',
+                            value: _appLetter,
+                            items: _letters,
+                            onChanged: (val) {
+                              setState(() => _appLetter = val!);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownField(
+                            label: 'Order No Length',
+                            value: _orderNoMaxLength.toString(),
+                            items: _orderLengthOptions,
+                            onChanged: (val) {
+                              setState(() => _orderNoMaxLength = int.parse(val!));
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  DropdownField(
-                    label: 'Set App Letter',
-                    value: _appLetter,
-                    items: _letters,
-                    onChanged: (val) {
-                      setState(() => _appLetter = val!);
-                    },
-                  ),
-                  DropdownField(
-                    label: 'Order No Max Length',
-                    value: _orderNoMaxLength.toString(),
-                    items: _orderLengthOptions,
-                    onChanged: (val) {
-                      setState(() => _orderNoMaxLength = int.parse(val!));
-                    },
-                  ),
-                ],
+            ),
+            const SizedBox(height: 12),
+            // Time Settings Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Shift Time Settings',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownField(
+                            label: 'Hour',
+                            value: _selectedHour,
+                            items: _hours,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedHour = value!;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownField(
+                            label: 'Minute',
+                            value: _selectedMinute,
+                            items: _minutes,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedMinute = value!;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownField(
+                            label: 'AM/PM',
+                            value: _selectedAmPm,
+                            items: _amPm,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedAmPm = value!;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 15),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  DropdownField(
-                    label: 'Hour',
-                    value: _selectedHour,
-                    items: _hours,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedHour = value!;
-                      });
-                    },
-                  ),
-                  DropdownField(
-                    label: 'Minute',
-                    value: _selectedMinute,
-                    items: _minutes,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedMinute = value!;
-                      });
-                    },
-                  ),
-                  DropdownField(
-                    label: 'AM/PM',
-                    value: _selectedAmPm,
-                    items: _amPm,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedAmPm = value!;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
+            ),
+            const SizedBox(height: 16),
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
                         _formKey.currentState!.save();
                         _saveSettings();
                       }
                     },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                     child: const Text('Save Settings'),
                   ),
-                  ElevatedButton(
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
                     onPressed: () {
                       setState(() {
                         _isLoading = true;
                       });
                       _resetSettings();
                     },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      backgroundColor: Colors.grey[600],
+                    ),
                     child: const Text('Reset Settings'),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );

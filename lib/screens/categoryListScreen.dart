@@ -56,12 +56,16 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     final filteredCategories = _categories.toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Categories')),
+      appBar: AppBar(
+        title: const Text('Categories'),
+        elevation: 0,
+      ),
       body: RefreshIndicator(
         onRefresh: _refreshCategories,
         child: filteredCategories.isEmpty
-            ? const Center(child: Text('No categories available'))
+            ? _buildEmptyState()
             : ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: filteredCategories.length,
                 itemBuilder: (context, index) {
                   final category = filteredCategories[index];
@@ -70,12 +74,17 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                           key: Key(category.id.toString()),
                           direction: DismissDirection.endToStart,
                           background: Container(
-                            color: Colors.red,
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red[400],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: const Icon(
                               Icons.delete_forever,
                               color: Colors.white,
+                              size: 24,
                             ),
                           ),
                           confirmDismiss: (direction) async {
@@ -83,8 +92,11 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                               context: context,
                               builder: (context) {
                                 return AlertDialog(
-                                  title: const Text('Confirm'),
-                                  content: const Text('Delete this category?'),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  title: const Text('Delete Category'),
+                                  content: const Text('Are you sure you want to delete this category?'),
                                   actions: [
                                     TextButton(
                                       onPressed: () =>
@@ -94,6 +106,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                                     TextButton(
                                       onPressed: () =>
                                           Navigator.of(context).pop(true),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
                                       child: const Text('Delete'),
                                     ),
                                   ],
@@ -120,16 +135,32 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           );
         },
         icon: const Icon(Icons.add),
-        label: const Text('New Category'),
+        label: const Text('New Category')
       ),
     );
   }
 
   Widget _buildCategoryTile(Category category, int index) {
-    return Container(
-      color: index % 2 == 0 ? Colors.grey[200] : Colors.white,
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: ListTile(
-        title: Text(category.name),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: CircleAvatar(
+          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          child: Icon(
+            Icons.category,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        title: Text(
+          category.name,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: Colors.grey[400],
+        ),
         onTap: () {
           Navigator.push(
             context,
@@ -141,6 +172,40 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.category_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No Categories Found',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tap the + button to add your first category',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

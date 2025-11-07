@@ -73,7 +73,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final filteredProducts = filtered.toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Products')),
+      appBar: AppBar(
+        title: const Text('Products'),
+        elevation: 0,
+      ),
       body: RefreshIndicator(
         onRefresh: _refreshProducts,
         child: Column(
@@ -85,7 +88,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: _categories.length + 1, // +1 for "All" option
                 itemBuilder: (context, index) {
                   if (index == 0) {
@@ -108,13 +111,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 },
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, thickness: 0.5),
             // Products List
             Expanded(
               child: filteredProducts.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       itemCount: filteredProducts.length,
                       itemBuilder: (context, index) {
                         final product = filteredProducts[index];
@@ -123,18 +126,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 key: Key(product.id.toString()),
                                 direction: DismissDirection.endToStart,
                                 background: Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: Colors.red[400],
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   alignment: Alignment.centerRight,
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
+                                    horizontal: 16,
                                   ),
                                   child: const Icon(
                                     Icons.delete_forever,
                                     color: Colors.white,
-                                    size: 28,
+                                    size: 24,
                                   ),
                                 ),
                                 confirmDismiss: (direction) async {
@@ -193,7 +197,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           );
         },
         icon: const Icon(Icons.add),
-        label: const Text('New Product'),
+        label: const Text('New Product')
       ),
     );
   }
@@ -204,7 +208,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       child: ChoiceChip(
         label: Text(label),
         selected: selected,
@@ -221,8 +225,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 12),
           Text(
             'No Products Found',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -230,7 +234,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Tap the + button to add your first product',
             style: Theme.of(
@@ -253,7 +257,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           child: Opacity(
             opacity: value,
             child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: 8),
               child: InkWell(
                 onTap: () {
                   Navigator.push(
@@ -268,7 +272,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -290,7 +294,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                       ),
                                 ),
                                 if (product.info.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 2),
                                   Text(
                                     product.info,
                                     style: Theme.of(context).textTheme.bodySmall
@@ -302,8 +306,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
+                              horizontal: 8,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: Theme.of(
@@ -325,9 +329,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         ],
                       ),
                       if (product.isDeal) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.orange[50],
                             borderRadius: BorderRadius.circular(8),
@@ -354,7 +358,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Text(
                                 'Includes:',
                                 style: Theme.of(context).textTheme.bodySmall
@@ -363,14 +367,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                       color: Colors.grey[700],
                                     ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               ...product.productList?.toSet().map((id) {
                                     final item = _products.firstWhere(
                                       (p) => p.id == id,
                                     );
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 1,
+                                        vertical: 0.5,
                                       ),
                                       child: Row(
                                         children: [

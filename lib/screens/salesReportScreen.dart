@@ -103,6 +103,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sales Reports'),
+        elevation: 0,
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -166,9 +167,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         children: [
           // Date Selection Card
           Card(
-            margin: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(12),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
                   Row(
@@ -185,7 +186,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -195,7 +196,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                           onTap: () => _pickDate(isStart: true),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildDateSelector(
                           label: 'End Date',
@@ -205,7 +206,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -234,37 +235,35 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           // Summary Cards
           if (_report.isNotEmpty) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
                   Expanded(
                     child: _buildSummaryCard(
                       title: 'Total Sales',
                       value: 'Rs. ${totalAll.toStringAsFixed(0)}',
-                      icon: Icons.attach_money,
                       color: Theme.of(context).colorScheme.secondary,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _buildSummaryCard(
                       title: 'Items Sold',
                       value: totalQuantity.toString(),
-                      icon: Icons.shopping_cart,
                       color: Theme.of(context).colorScheme.tertiary,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
           // Report List
           Expanded(
             child: _report.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     itemCount: _report.length,
                     itemBuilder: (context, index) {
                       final item = _report[index];
@@ -275,9 +274,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                           : 0.0;
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
+                        margin: const EdgeInsets.only(bottom: 6),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
+                          contentPadding: const EdgeInsets.all(12),
                           leading: CircleAvatar(
                             backgroundColor: Theme.of(
                               context,
@@ -297,9 +296,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               Text('Quantity: ${item['totalQty']}'),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               LinearProgressIndicator(
                                 value: percentage / 100,
                                 backgroundColor: Colors.grey[300],
@@ -307,7 +306,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                                   Theme.of(context).colorScheme.primary,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               Text(
                                 '${percentage.toStringAsFixed(1)}% of total sales',
                                 style: Theme.of(context).textTheme.bodySmall
@@ -338,40 +337,6 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                     },
                   ),
           ),
-          // Total Footer
-          if (_report.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'TOTAL SALES',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Rs. ${totalAll.toStringAsFixed(0)}',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -416,16 +381,13 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   Widget _buildSummaryCard({
     required String title,
     required String value,
-    required IconData icon,
     required Color color,
   }) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
             Text(
               title,
               style: Theme.of(
@@ -433,7 +395,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -453,8 +415,8 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.analytics_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          Icon(Icons.analytics_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 12),
           Text(
             'No Sales Data',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -462,7 +424,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Select a date range and generate report to view sales data',
             style: Theme.of(

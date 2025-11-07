@@ -69,13 +69,16 @@ class _OrderListScreenState extends State<OrderListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
+      appBar: AppBar(
+        title: const Text('Orders'),
+        elevation: 0,
+      ),
       body: RefreshIndicator(
         onRefresh: _refreshOrders,
         child: _orders.isEmpty
             ? _buildEmptyState()
             : ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: _orders.length,
                 itemBuilder: (context, index) {
                   final order = _orders[index];
@@ -85,16 +88,17 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           key: Key(order.id.toString()),
                           direction: DismissDirection.endToStart,
                           background: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.red[400],
                               borderRadius: BorderRadius.circular(12),
                             ),
                             alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: const Icon(
                               Icons.delete_forever,
                               color: Colors.white,
-                              size: 28,
+                              size: 24,
                             ),
                           ),
                           confirmDismiss: (direction) async {
@@ -148,7 +152,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
           );
         },
         icon: const Icon(Icons.add),
-        label: const Text('New Order'),
+        label: const Text('New Order')
       ),
     );
   }
@@ -158,8 +162,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 12),
           Text(
             'No Orders Yet',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -167,7 +171,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Tap the + button to create your first order',
             style: Theme.of(
@@ -195,7 +199,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
           child: Opacity(
             opacity: value,
             child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: 8),
               child: InkWell(
                 onTap: () {
                   _orderItems.clear();
@@ -209,7 +213,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -230,7 +234,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                         ).colorScheme.primary,
                                       ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
                                   _formatDateTime(order.dateTime),
                                   style: Theme.of(context).textTheme.bodySmall
@@ -264,7 +268,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                         ],
                       ),
                       if (order.customerDetails.isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             Icon(
@@ -283,7 +287,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Icon(
@@ -320,9 +324,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
                         ],
                       ),
                       if (orderItems.isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.grey[50],
                             borderRadius: BorderRadius.circular(8),
@@ -334,7 +338,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                 final product = _getProductById(item.productId);
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 2,
+                                    vertical: 1,
                                   ),
                                   child: Row(
                                     children: [
@@ -366,7 +370,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                               if (orderItems.length > 3)
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 2,
+                                    vertical: 1,
                                   ),
                                   child: Text(
                                     '+${orderItems.length - 3} more items',

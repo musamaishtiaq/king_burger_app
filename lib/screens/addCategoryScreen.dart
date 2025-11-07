@@ -53,18 +53,25 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.category == null ? 'Add Category' : 'Edit Category'),
+        elevation: 0,
       ),
       body: Form(
         key: _formKey,
         child: Padding(
-          padding: const EdgeInsets.all(15.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
-            children: [              
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
               TextFormField(
                 focusNode: _nameFocusNode,
                 initialValue: _name,
-                decoration: const InputDecoration(labelText: 'Category Name'),
-                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Category Name',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                textInputAction: TextInputAction.done,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a category name';
@@ -75,11 +82,19 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                   _name = value!;
                 },
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saveForm,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
                 child: Text(
-                    widget.category == null ? 'Save Category' : 'Update Category'),
+                  widget.category == null ? 'Save Category' : 'Update Category',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),

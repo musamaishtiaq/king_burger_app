@@ -91,7 +91,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       _orderNumber = await _dbHelper.getNextOrderNo();
     }
     final cats = await _dbHelper.getCategories();
-    setState(() => _categories = cats.reversed.toList());
+    setState(() => _categories = [
+      Category(id: -1, name: 'Selected'),
+      ...cats.reversed.toList()
+    ]);
   }
 
   Future<void> _fetchProducts() async {
@@ -196,25 +199,43 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     }
   }
 
+  List<Product> _filterProducts() {
+    List<Product> _filteredProducts = [];
+    if (_selectedCategoryId == null) {
+      _filteredProducts = _products;
+    } else if (_selectedCategoryId == -1) {
+      final selectedIds = _orderItems.map((item) => item.productId).toSet();
+      _filteredProducts = _products.where((p) => selectedIds.contains(p.id)).toList();
+    } else {
+      _filteredProducts = _products.where((p) => p.categoryId == _selectedCategoryId).toList();
+    }
+    return _filteredProducts;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filteredProducts = _selectedCategoryId == null
-        ? _products
-        : _products.where((p) => p.categoryId == _selectedCategoryId).toList();
+    final filteredProducts = _filterProducts();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.order == null ? 'Add Order' : 'Edit Order'),
+        elevation: 0,
       ),
       body: Column(
         children: [
-          Row(
-            children: [
-              _buildTopTab('Items', 0),
-              _buildTopTab('Bill ($_count)', 1),
-            ],
+          Container(
+            margin: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                _buildTopTab('Items', 0),
+                _buildTopTab('Bill ($_count)', 1),
+              ],
+            ),
           ),
-          const Divider(height: 1),
           Expanded(
             child: _selectedTab == 0
                 ? _buildItemsTab(filteredProducts)
@@ -231,14 +252,19 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       child: GestureDetector(
         onTap: () => setState(() => _selectedTab = index),
         child: Container(
-          color: selected ? Colors.blue : Colors.grey[300],
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Center(
             child: Text(
               text,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.black,
-                fontWeight: FontWeight.bold,
+                color: selected ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
               ),
             ),
           ),
@@ -251,26 +277,38 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     return Column(
       children: [
         // 🔹 Horizontal Categories
-        SizedBox(
+        Container(
           height: 60,
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-            // itemCount: _categories.length + 1,
-            itemCount: _categories.length,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: _categories.length + 1, // +1 for "All" option
             itemBuilder: (context, index) {
-              // if (index == 0) {
-              //   return _categoryChip('All', null);
-              // }
-              // final cat = _categories[index - 1];
-              final cat = _categories[index];
-              return _categoryChip(cat.name, cat.id);
+              if (index == 0) {
+                return _buildCategoryChip(
+                  label: 'All',
+                  selected: _selectedCategoryId == null,
+                  onTap: () {
+                    setState(() => _selectedCategoryId = null);
+                  },
+                );
+              }
+              final cat = _categories[index - 1];
+              return _buildCategoryChip(
+                label: cat.name,
+                selected: _selectedCategoryId == cat.id,
+                onTap: () {
+                  setState(() => _selectedCategoryId = cat.id);
+                },
+              );
             },
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1, thickness: 0.5),
         Expanded(
           child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: filteredProducts.length,
             itemBuilder: (context, index) {
               final product = filteredProducts[index];
@@ -279,22 +317,49 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                 orElse: () =>
                     OrderItem(orderId: 0, productId: 0, quantity: 0, price: 0),
               );
-              return ListTile(
-                title: Text(product.name),
-                subtitle: Text('Rs. ${product.price.toStringAsFixed(0)}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                        icon: const Icon(Icons.remove),
-                        onPressed: () {
-                          if (existing.quantity > 0) _removeProduct(product);
-                        }),
-                    Text(existing.quantity.toString()),
-                    IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: () => _addProduct(product)),
-                  ],
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  title: Text(
+                    product.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Rs. ${product.price.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  trailing: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: existing.quantity > 0 ? () => _removeProduct(product) : null,
+                          color: existing.quantity > 0 ? Colors.red[600] : Colors.grey[400],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          child: Text(
+                            existing.quantity.toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: () => _addProduct(product),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               );
             },
@@ -310,64 +375,167 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          ..._orderItems.map((item) {
-            final product = _products.firstWhere((p) => p.id == item.productId);
-            return ListTile(
-              title: Text(product.name),
-              subtitle: Text('Qty: ${item.quantity}'),
-              trailing: Text('Rs. ${item.price.toStringAsFixed(0)}'),
-            );
-          }).toList(),
-          const Divider(),
-          Text('Total Items: $_count',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text('Total Price: Rs. ${_totalPrice.toStringAsFixed(0)}',
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          TextFormField(
-            initialValue: _orderNumber,
-            readOnly: true,
-            decoration: const InputDecoration(labelText: 'Order Number'),
-            validator: (v) => v!.isEmpty ? 'Required' : null,
+          if (_orderItems.isNotEmpty) ...[
+            Card(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.shopping_cart, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Order Items',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ..._orderItems.map((item) {
+                    final product = _products.firstWhere((p) => p.id == item.productId);
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      title: Text(product.name),
+                      subtitle: Text('Qty: ${item.quantity}'),
+                      trailing: Text(
+                        'Rs. ${item.price.toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Total Items:', style: Theme.of(context).textTheme.bodyLarge),
+                        Text('$_count', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Total Price:', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          'Rs. ${_totalPrice.toStringAsFixed(0)}',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.receipt, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Order Details',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _orderNumber,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Order Number',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _dateTime,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Date Time',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _customerDetails,
+                    decoration: const InputDecoration(
+                      labelText: 'Customer Details',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    onChanged: (v) => _customerDetails = v,
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Home Delivery'),
+                    subtitle: const Text('Enable for delivery orders'),
+                    value: _isCashOnDelivery,
+                    onChanged: (v) => setState(() => _isCashOnDelivery = v),
+                  ),
+                ],
+              ),
+            ),
           ),
-          TextFormField(
-            initialValue: _dateTime,
-            readOnly: true,
-            decoration: const InputDecoration(labelText: 'Date Time'),
-            validator: (v) => v!.isEmpty ? 'Required' : null,
-          ),
-          TextFormField(
-            initialValue: _customerDetails,
-            decoration: const InputDecoration(labelText: 'Customer Details'),
-            onChanged: (v) => _customerDetails = v,
-          ),
-          SwitchListTile(
-            title: const Text('Home Delivery'),
-            value: _isCashOnDelivery,
-            onChanged: (v) => setState(() => _isCashOnDelivery = v),
-          ),
-          const SizedBox(height: 15),
+            const SizedBox(height: 16),
           ElevatedButton(
             onPressed: _saveOrder,
-            child: Text(widget.order == null ? 'Save Order' : 'Update Order'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              widget.order == null ? 'Save Order' : 'Update Order',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _categoryChip(String label, int? categoryId) {
-    final selected = _selectedCategoryId == categoryId;
+  Widget _buildCategoryChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       child: ChoiceChip(
         label: Text(label),
         selected: selected,
-        onSelected: (_) {
-          setState(() => _selectedCategoryId = categoryId);
-        },
-        selectedColor: Colors.blue,
+        onSelected: (_) => onTap(),
+        selectedColor: Theme.of(context).colorScheme.secondary,
         backgroundColor: Colors.grey[300],
         labelStyle: TextStyle(color: selected ? Colors.white : Colors.black),
       ),

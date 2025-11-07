@@ -191,7 +191,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text('Settings'),
+        elevation: 0,
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -200,7 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Header Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -213,12 +216,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Receipt Printing Settings',
-                          style: Theme.of(context).textTheme.titleLarge
+                          style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       'Configure what information to include on customer and internal receipts',
                       style: Theme.of(
@@ -229,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             // Customer Slip Section
             _buildSlipSection(
               title: 'Customer Receipt',
@@ -265,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             // Internal Slip Section
             _buildSlipSection(
               title: 'Internal Receipt',
@@ -301,32 +304,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
             // Action Buttons
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      _formKey.currentState!.save();
-                      _saveSettings();
-                    }
-                  },
-                  child: const Text('Save Settings'),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState!.validate()) {
+                        _formKey.currentState!.save();
+                        _saveSettings();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Save Settings'),
+                  ),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isLoading = true;
-                    });
-                    _resetSettings();
-                  },
-                  child: const Text('Reset Settings'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      _resetSettings();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      backgroundColor: Colors.grey[600],
+                    ),
+                    child: const Text('Reset Settings'),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
           ],
         ),
       ),
