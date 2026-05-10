@@ -7,6 +7,7 @@ import '../screens/salesReportScreen.dart';
 import '../widgets/dropdownField.dart';
 import '../screens/settingsScreen.dart';
 import '../screens/backupScreen.dart';
+import '../utils/app_colors.dart';
 
 class PrinterSettingsScreen extends StatefulWidget {
   @override
@@ -111,6 +112,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           content: Text(message),
           actions: [
             TextButton(
@@ -145,28 +147,27 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Printer Settings'),
-        elevation: 0,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             // Store Information Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.store, color: Theme.of(context).colorScheme.primary),
+                        const Icon(Icons.store, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Store Information',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
@@ -176,7 +177,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                       initialValue: _storeName,
                       decoration: const InputDecoration(
                         labelText: 'Store Name',
-                        border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       onChanged: (val) => _storeName = val,
@@ -195,18 +195,18 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
             // App Settings Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
+                        const Icon(Icons.settings, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'App Settings',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
@@ -255,18 +255,18 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
             // Time Settings Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.access_time, color: Theme.of(context).colorScheme.primary),
+                        const Icon(Icons.access_time, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Shift Time Settings',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
@@ -331,10 +331,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: const Text('Save Settings'),
                   ),
@@ -349,11 +346,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                       _resetSettings();
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      backgroundColor: Colors.grey[600],
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: const Color(0xFFEFEFEF),
+                      foregroundColor: AppColors.textPrimary,
                     ),
                     child: const Text('Reset Settings'),
                   ),

@@ -6,6 +6,7 @@ class Product {
   String info;
   bool isDeal;
   List<int>? productList;
+  String? imagePath;
 
   Product({
     this.id,
@@ -15,6 +16,7 @@ class Product {
     required this.info,
     this.isDeal = false,
     this.productList,
+    this.imagePath,
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +28,7 @@ class Product {
       'info': info,
       'isDeal': isDeal ? 1 : 0,
       'productList': productList?.join(',') ?? '',
+      'imagePath': imagePath,
     };
   }
 
@@ -40,6 +43,7 @@ class Product {
       productList: map['productList'] != null && map['productList'] != ''
           ? List<int>.from((map['productList'] as String).split(',').map((e) => int.parse(e)))
           : [],
+      imagePath: map['imagePath'] as String?,
     );
   }
 }

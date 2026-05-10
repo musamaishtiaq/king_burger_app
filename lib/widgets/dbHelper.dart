@@ -34,16 +34,25 @@ class DbHelper {
     String path = join(await getDatabasesPath(), 'fast_food.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE categories ADD COLUMN imagePath TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN imagePath TEXT');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT
+        name TEXT,
+        imagePath TEXT
       )
     ''');
 
@@ -56,6 +65,7 @@ class DbHelper {
         info TEXT,
         isDeal INTEGER,
         productList TEXT,
+        imagePath TEXT,
         FOREIGN KEY(categoryId) REFERENCES categories(id)
       )
     ''');
@@ -82,7 +92,21 @@ class DbHelper {
         FOREIGN KEY(orderId) REFERENCES orders(id),
         FOREIGN KEY(productId) REFERENCES products(id)
       )
-    ''');
+    '''    );
+  }
+
+  /// Copies [sourcePath] into app documents and returns the new path, or null on failure.
+  Future<String?> storeEntityImage(String sourcePath, String folder, int id) async {
+    final src = File(sourcePath);
+    if (!await src.exists()) return null;
+    final root = await getApplicationDocumentsDirectory();
+    final destDir = Directory(join(root.path, 'entity_images', folder));
+    await destDir.create(recursive: true);
+    var ext = extension(sourcePath).toLowerCase();
+    if (ext.isEmpty || ext.length > 8) ext = '.jpg';
+    final destPath = join(destDir.path, '$id$ext');
+    await src.copy(destPath);
+    return destPath;
   }
 
   // Category operations
@@ -130,7 +154,7 @@ class DbHelper {
 
   Future<List<Product>> getProducts() async {
     final db = await database;
-    var result = await db.query('products');
+    var result = await db.query('products', orderBy: 'id DESC');
     return result.isNotEmpty
         ? result.map((p) => Product.fromMap(p)).toList()
         : [];
@@ -149,19 +173,13 @@ class DbHelper {
 
   Future<List<Product>> getNonDealProducts() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps =
-        await db.query('products', where: 'isDeal = ?', whereArgs: [0]);
-    return List.generate(maps.length, (i) {
-      return Product(
-        id: maps[i]['id'],
-        name: maps[i]['name'],
-        categoryId: maps[i]['categoryId'],
-        price: maps[i]['price'],
-        info: maps[i]['info'],
-        isDeal: false,
-        productList: [],
-      );
-    });
+    final List<Map<String, dynamic>> maps = await db.query(
+      'products',
+      where: 'isDeal = ?',
+      whereArgs: [0],
+      orderBy: 'id DESC',
+    );
+    return maps.map((m) => Product.fromMap(m)).toList();
   }
 
   // Order operations
@@ -390,6 +408,7 @@ class DbHelper {
         return {
           'id': cat['id'],
           'name': cat['name'],
+          'imagePath': cat['imagePath'],
           'products': products
               .map((p) => {
                     'id': p['id'],
@@ -397,7 +416,8 @@ class DbHelper {
                     'price': p['price'],
                     'info': p['info'] ?? '',
                     'isDeal': p['isDeal'],
-                    'productList': p['productList'] ?? '[]'
+                    'productList': p['productList'] ?? '[]',
+                    'imagePath': p['imagePath'],
                   })
               .toList()
         };
@@ -420,27 +440,39 @@ class DbHelper {
     if (result == null) return;
 
     final file = File(result.files.single.path!);
-    final jsonData = jsonDecode(await file.readAsString());
+    final jsonData = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+    final exportBlock =
+        (jsonData['Export Data'] as Map<String, dynamic>?) ?? jsonData;
+    final categoriesList =
+        (exportBlock['categories'] as List<dynamic>?) ?? const [];
 
     final batch = db.batch();
 
-    for (var cat in jsonData['categories']) {
+    for (var cat in categoriesList) {
       // Insert category
+      final catMap = Map<String, dynamic>.from(cat as Map);
       int catId = await db.insert(
-          'categories', {'id': cat['id'], 'name': cat['name']},
+          'categories',
+          {
+            'id': catMap['id'],
+            'name': catMap['name'],
+            'imagePath': catMap['imagePath'],
+          },
           conflictAlgorithm: ConflictAlgorithm.replace);
 
-      for (var prod in cat['products']) {
-        int prodId = await db.insert(
+      for (var prod in (catMap['products'] as List<dynamic>?) ?? const []) {
+        final p = Map<String, dynamic>.from(prod as Map);
+        await db.insert(
             'products',
             {
-              'id': prod['id'],
-              'name': prod['name'],
+              'id': p['id'],
+              'name': p['name'],
               'categoryId': catId,
-              'price': prod['price'],
-              'info': prod['info'],
-              'isDeal': prod['isDeal'] ? 1 : 0,
-              'productList': prod['productList'],
+              'price': p['price'],
+              'info': p['info'],
+              'isDeal': (p['isDeal'] == true || p['isDeal'] == 1) ? 1 : 0,
+              'productList': p['productList'],
+              'imagePath': p['imagePath'],
             },
             conflictAlgorithm: ConflictAlgorithm.replace);
       }

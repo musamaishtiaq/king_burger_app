@@ -4,6 +4,7 @@ import '../widgets/dbHelper.dart';
 import '../screens/settingsScreen.dart';
 import '../screens/printerSettingsScreen.dart';
 import '../screens/backupScreen.dart';
+import '../utils/app_colors.dart';
 
 class SalesReportScreen extends StatefulWidget {
   @override
@@ -103,7 +104,6 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sales Reports'),
-        elevation: 0,
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -167,22 +167,22 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         children: [
           // Date Selection Card
           Card(
-            margin: const EdgeInsets.all(12),
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 children: [
                   Row(
                     children: [
                       Icon(
                         Icons.date_range,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: AppColors.primary,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Select Date Range',
                         style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ],
                   ),
@@ -235,14 +235,14 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           // Summary Cards
           if (_report.isNotEmpty) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
                   Expanded(
                     child: _buildSummaryCard(
                       title: 'Total Sales',
                       value: 'Rs. ${totalAll.toStringAsFixed(0)}',
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -250,7 +250,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                     child: _buildSummaryCard(
                       title: 'Items Sold',
                       value: totalQuantity.toString(),
-                      color: Theme.of(context).colorScheme.tertiary,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -263,7 +263,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
             child: _report.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                     itemCount: _report.length,
                     itemBuilder: (context, index) {
                       final item = _report[index];
@@ -274,43 +274,46 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                           : 0.0;
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 6),
+                        margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(12),
                           leading: CircleAvatar(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary.withOpacity(0.1),
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                             child: Text(
                               '${index + 1}',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
                           title: Text(
                             item['productName'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 2),
-                              Text('Quantity: ${item['totalQty']}'),
+                              Text(
+                                'Quantity: ${item['totalQty']}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
                               const SizedBox(height: 3),
                               LinearProgressIndicator(
                                 value: percentage / 100,
-                                backgroundColor: Colors.grey[300],
+                                backgroundColor: const Color(0xFFEAEAEA),
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Theme.of(context).colorScheme.primary,
+                                  AppColors.primary,
                                 ),
                               ),
                               const SizedBox(height: 3),
                               Text(
                                 '${percentage.toStringAsFixed(1)}% of total sales',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: Colors.grey[600]),
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
                           ),
@@ -320,15 +323,17 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                             children: [
                               Text(
                                 'Rs. ${(item['totalPrice'] as num).toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
+                                    ),
                               ),
                               Text(
                                 '${item['totalQty']} sold',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: Colors.grey[600]),
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
                           ),
@@ -352,25 +357,23 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8),
+          color: const Color(0xFFEFEFEF),
+          border: Border.all(color: Colors.transparent),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 4),
             Text(
               '${date.day}/${date.month}/${date.year}',
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -385,21 +388,19 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   }) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           children: [
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+              style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 3),
             Text(
               value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
                 color: color,
               ),
               textAlign: TextAlign.center,
@@ -412,27 +413,38 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.analytics_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 12),
-          Text(
-            'No Sales Data',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.analytics_outlined,
+                size: 34,
+                color: AppColors.primary,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Select a date range and generate report to view sales data',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              'No Sales Data',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Select a date range, then generate a report.',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

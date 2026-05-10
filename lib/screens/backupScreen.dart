@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/settingsScreen.dart';
 import '../screens/printerSettingsScreen.dart';
+import '../utils/app_colors.dart';
 
 class BackupScreen extends StatelessWidget {
   DbHelper _dbHelper = DbHelper();
@@ -13,36 +14,42 @@ class BackupScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Backup & Restore'),
-        elevation: 0,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.backup,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.primary,
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Icon(
+                        Icons.backup,
+                        size: 34,
+                        color: AppColors.primary,
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     Text(
                       'Data Management',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Export your data for backup or import previously saved data',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -56,10 +63,7 @@ class BackupScreen extends StatelessWidget {
                 icon: const Icon(Icons.download),
                 label: const Text('Export Data'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 onPressed: () async {
                   await _dbHelper.exportBackup();
@@ -76,10 +80,7 @@ class BackupScreen extends StatelessWidget {
                 icon: const Icon(Icons.upload),
                 label: const Text('Import Data'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 onPressed: () async {
                   await _dbHelper.importBackup();

@@ -1,6 +1,8 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../models/category.dart';
+import '../utils/local_image.dart';
 import '../widgets/dbHelper.dart';
 
 class AddCategoryScreen extends StatefulWidget {
@@ -18,6 +20,8 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameFocusNode = FocusNode();
   String _name = '';
+  String? _pickedImagePath;
+  bool _clearImage = false;
 
   @override
   void initState() {
@@ -27,20 +31,48 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final result =
+        await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.single.path == null) return;
+    setState(() {
+      _pickedImagePath = result.files.single.path;
+      _clearImage = false;
+    });
+  }
+
   Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      final category = Category(
-        id: widget.category?.id,
-        name: _name,
-      );
       if (widget.category == null) {
-        print("-----Add Category-----");
-        print(category.toString());
-        await _dbHelper.insertCategory(category);
+        final category = Category(name: _name);
+        final id = await _dbHelper.insertCategory(category);
+        if (!_clearImage && _pickedImagePath != null) {
+          final stored = await _dbHelper.storeEntityImage(
+            _pickedImagePath!,
+            'categories',
+            id,
+          );
+          await _dbHelper.updateCategory(
+            Category(id: id, name: _name, imagePath: stored),
+          );
+        }
       } else {
-        print("-----Update Category-----");
-        print(category.toString());
+        String? imagePath = widget.category!.imagePath;
+        if (_pickedImagePath != null) {
+          imagePath = await _dbHelper.storeEntityImage(
+            _pickedImagePath!,
+            'categories',
+            widget.category!.id!,
+          );
+        } else if (_clearImage) {
+          imagePath = null;
+        }
+        final category = Category(
+          id: widget.category!.id,
+          name: _name,
+          imagePath: imagePath,
+        );
         await _dbHelper.updateCategory(category);
       }
       widget.onSave();
@@ -50,26 +82,64 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final displayPath =
+        _clearImage ? null : (_pickedImagePath ?? widget.category?.imagePath);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.category == null ? 'Add Category' : 'Edit Category'),
-        elevation: 0,
       ),
       body: Form(
         key: _formKey,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: LocalOrAssetImage(
+                    path: displayPath,
+                    entity: LocalImageEntity.category,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Choose image'),
+                    ),
+                  ),
+                  if (displayPath != null ||
+                      widget.category?.imagePath != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Remove image',
+                      onPressed: () => setState(() {
+                        _clearImage = true;
+                        _pickedImagePath = null;
+                      }),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 focusNode: _nameFocusNode,
                 initialValue: _name,
                 decoration: const InputDecoration(
                   labelText: 'Category Name',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
                 textInputAction: TextInputAction.done,
                 validator: (value) {
@@ -86,14 +156,11 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
               ElevatedButton(
                 onPressed: _saveForm,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(
                   widget.category == null ? 'Save Category' : 'Update Category',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
                 ),
               ),
             ],

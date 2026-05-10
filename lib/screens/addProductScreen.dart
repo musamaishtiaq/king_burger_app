@@ -1,7 +1,10 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../models/category.dart';
 import '../models/product.dart';
+import '../utils/app_colors.dart';
+import '../utils/local_image.dart';
 import '../widgets/dbHelper.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -28,9 +31,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
   List<Product> _filteredProducts = []; // products filtered by category
   List<int> _selectedProductsId = [];
 
-  List<Category> _categories = [];
-  int? _selectedCategoryId; // for product itself
-  int? _selectedDealCategoryId; // for filtering deals
+  List<Category> _productLineCategories = [];
+  List<Category> _dealChipCategories = [];
+  int? _selectedCategoryId;
+  int? _selectedDealCategoryId;
+  String? _pickedImagePath;
+  bool _clearImage = false;
 
   @override
   void initState() {
@@ -44,41 +50,65 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _selectedProductsId.addAll(widget.product!.productList!);
       }
     }
-    if (_isDeal) {
-      _fetchNonDealProducts();
-      _fetchCategories();
-    }
+    _loadProductCategories().then((_) {
+      if (_isDeal) {
+        _fetchNonDealProducts().then((_) => _fetchDealCategories());
+      }
+    });
+  }
+
+  Future<void> _loadProductCategories() async {
+    final cats = await _dbHelper.getCategories();
+    setState(() {
+      _productLineCategories = cats.reversed.toList();
+      if (widget.product != null) {
+        _selectedCategoryId = widget.product!.categoryId;
+      } else if (_productLineCategories.isNotEmpty) {
+        _selectedCategoryId = _productLineCategories.first.id;
+      }
+    });
   }
 
   Future<void> _fetchNonDealProducts() async {
     final prods = await _dbHelper.getNonDealProducts();
     setState(() {
-      _allNonDealProducts = prods.reversed.toList();
+      _allNonDealProducts = prods;
       // Precalculate total price if editing
       for (var id in _selectedProductsId) {
         final p = _allNonDealProducts.firstWhere(
           (e) => e.id == id,
-          orElse: () => Product(categoryId: 0, name: '', price: 0, info: ''),
+          orElse: () =>
+            Product(categoryId: 0, name: '', price: 0, info: '', imagePath: null),
         );
         if (p.id != null) totalPrice += p.price;
       }
     });
   }
 
-  Future<void> _fetchCategories() async {
+  Future<void> _fetchDealCategories() async {
     final cats = await _dbHelper.getCategories();
-    final categoryIdsWithProducts = _allNonDealProducts.map((p) => p.categoryId).toSet();
-    final filteredCats = cats.where((c) => categoryIdsWithProducts.contains(c.id)).toList();
-    _categories = [
+    final categoryIdsWithProducts =
+        _allNonDealProducts.map((p) => p.categoryId).toSet();
+    final filteredCats =
+        cats.where((c) => categoryIdsWithProducts.contains(c.id)).toList();
+    _dealChipCategories = [
       Category(id: -1, name: 'Selected'),
       ...filteredCats.reversed.toList()
     ];
-    _selectedCategoryId = _categories.first.id;
-    if (_categories.isNotEmpty) {
-      _selectedDealCategoryId = _selectedCategoryId; // default first category
+    if (_dealChipCategories.isNotEmpty) {
+      _selectedDealCategoryId = _dealChipCategories.first.id;
       _filterDealProducts();
     }
+    setState(() {});
+  }
+
+  Future<void> _pickImage() async {
+    final result =
+        await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.single.path == null) return;
     setState(() {
+      _pickedImagePath = result.files.single.path;
+      _clearImage = false;
     });
   }
 
@@ -100,25 +130,66 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _saveForm() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      final product = Product(
-        id: widget.product?.id,
-        name: _name,
-        categoryId: _selectedCategoryId!,
-        price: _price,
-        info: _info,
-        isDeal: _isDeal,
-        productList: _isDeal ? _selectedProductsId : null,
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+
+    if (widget.product == null) {
+      final id = await _dbHelper.insertProduct(
+        Product(
+          name: _name,
+          categoryId: _selectedCategoryId!,
+          price: _price,
+          info: _info,
+          isDeal: _isDeal,
+          productList: _isDeal ? _selectedProductsId : null,
+          imagePath: null,
+        ),
       );
-      if (widget.product == null) {
-        await _dbHelper.insertProduct(product);
-      } else {
-        await _dbHelper.updateProduct(product);
+      if (_pickedImagePath != null) {
+        final stored = await _dbHelper.storeEntityImage(
+          _pickedImagePath!,
+          'products',
+          id,
+        );
+        await _dbHelper.updateProduct(
+          Product(
+            id: id,
+            name: _name,
+            categoryId: _selectedCategoryId!,
+            price: _price,
+            info: _info,
+            isDeal: _isDeal,
+            productList: _isDeal ? _selectedProductsId : null,
+            imagePath: stored,
+          ),
+        );
       }
-      widget.onSave();
-      Navigator.pop(context);
+    } else {
+      String? imgPath = widget.product!.imagePath;
+      if (_pickedImagePath != null) {
+        imgPath = await _dbHelper.storeEntityImage(
+          _pickedImagePath!,
+          'products',
+          widget.product!.id!,
+        );
+      } else if (_clearImage) {
+        imgPath = null;
+      }
+      await _dbHelper.updateProduct(
+        Product(
+          id: widget.product!.id,
+          name: _name,
+          categoryId: _selectedCategoryId!,
+          price: _price,
+          info: _info,
+          isDeal: _isDeal,
+          productList: _isDeal ? _selectedProductsId : null,
+          imagePath: imgPath,
+        ),
+      );
     }
+    widget.onSave();
+    Navigator.pop(context);
   }
 
   @override
@@ -126,21 +197,58 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.product == null ? 'Add Item' : 'Edit Item'),
-        elevation: 0,
       ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: LocalOrAssetImage(
+                    path: _clearImage
+                        ? null
+                        : (_pickedImagePath ?? widget.product?.imagePath),
+                    entity: LocalImageEntity.product,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Choose image'),
+                    ),
+                  ),
+                  if (!_clearImage &&
+                      (_pickedImagePath != null ||
+                          widget.product?.imagePath != null)) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Remove image',
+                      onPressed: () => setState(() {
+                        _clearImage = true;
+                        _pickedImagePath = null;
+                      }),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 initialValue: _name,
                 decoration: const InputDecoration(
                   labelText: 'Item Name',
-                  border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 12,
@@ -152,8 +260,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                initialValue: _selectedCategoryId,
-                items: _categories
+                value: _selectedCategoryId,
+                items: _productLineCategories
                     .map(
                       (cat) => DropdownMenuItem(
                         value: cat.id,
@@ -164,20 +272,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 onChanged: (v) => setState(() => _selectedCategoryId = v),
                 decoration: const InputDecoration(
                   labelText: 'Select Category',
-                  border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 12,
                   ),
                 ),
-                validator: (v) => v == null ? 'Please select category' : null,
+                validator: (v) =>
+                    v == null || _productLineCategories.isEmpty
+                        ? 'Please select category'
+                        : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 initialValue: _price.toString(),
                 decoration: const InputDecoration(
                   labelText: 'Price',
-                  border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 12,
@@ -192,7 +301,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 initialValue: _info,
                 decoration: const InputDecoration(
                   labelText: 'Info',
-                  border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 12,
@@ -216,7 +324,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   onChanged: (value) {
                     setState(() {
                       _isDeal = value;
-                      if (value) _fetchNonDealProducts();
+                      if (value) {
+                        _fetchNonDealProducts()
+                            .then((_) => _fetchDealCategories());
+                      }
                     });
                   },
                 ),
@@ -233,13 +344,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           children: [
                             Icon(
                               Icons.local_offer,
-                              color: Theme.of(context).colorScheme.primary,
+                              color: AppColors.primary,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'Deal Configuration',
                               style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                           ],
                         ),
@@ -248,15 +359,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           height: 40,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
-                            itemCount: _categories.length,
+                            itemCount: _dealChipCategories.length,
                             itemBuilder: (ctx, index) {
-                              final cat = _categories[index];
+                              final cat = _dealChipCategories[index];
                               final isSelected =
                                   cat.id == _selectedDealCategoryId;
                               return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 3,
-                                ),
+                                padding: const EdgeInsets.only(right: 8),
                                 child: ChoiceChip(
                                   label: Text(cat.name),
                                   selected: isSelected,
@@ -266,11 +375,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                       _filterDealProducts();
                                     });
                                   },
-                                  selectedColor: Theme.of(
-                                    context,
-                                  ).colorScheme.secondary,
-                                  backgroundColor: Colors.grey[200],
-                                  labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
+                                  selectedColor:
+                                      AppColors.primary.withValues(alpha: 0.15),
+                                  backgroundColor: const Color(0xFFF0F0F0),
+                                  side:
+                                      const BorderSide(color: Colors.transparent),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  labelStyle: TextStyle(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               );
                             },
@@ -280,10 +398,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -291,16 +407,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               Text(
                                 'Deal Total:',
                                 style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
+                                    ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                               Text(
                                 '${_selectedProductsId.length} items - Rs. ${totalPrice.toStringAsFixed(0)}',
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
                                     ),
                               ),
                             ],
@@ -320,13 +434,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           children: [
                             Icon(
                               Icons.inventory,
-                              color: Theme.of(context).colorScheme.primary,
+                              color: AppColors.primary,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'Select Items for Deal',
                               style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                           ],
                         ),
@@ -347,27 +461,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               child: ListTile(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
-                                  vertical: 6,
+                                  vertical: 10,
                                 ),
                                 title: Text(
                                   product.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
                                 ),
                                 subtitle: Text(
                                   'Rs. ${product.price.toStringAsFixed(0)}',
                                   style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 trailing: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(20),
+                                    color: const Color(0xFFF0F0F0),
+                                    borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -390,8 +503,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                               }
                                             : null,
                                         color: count > 0
-                                            ? Colors.red[600]
-                                            : Colors.grey[400],
+                                            ? AppColors.error
+                                            : AppColors.disabled,
                                       ),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
@@ -418,9 +531,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                             _updateTotal(product.price, true);
                                           });
                                         },
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
+                                        color: AppColors.primary,
                                       ),
                                     ],
                                   ),
@@ -438,16 +549,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ElevatedButton(
                 onPressed: _saveForm,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(
                   widget.product == null ? 'Save Item' : 'Update Item',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),

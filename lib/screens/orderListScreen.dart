@@ -9,6 +9,7 @@ import '../screens/addOrderScreen.dart';
 import '../screens/settingsScreen.dart';
 import '../screens/printerSettingsScreen.dart';
 import '../screens/backupScreen.dart';
+import '../utils/app_colors.dart';
 
 class OrderListScreen extends StatefulWidget {
   @override
@@ -71,14 +72,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Orders'),
-        elevation: 0,
       ),
       body: RefreshIndicator(
         onRefresh: _refreshOrders,
         child: _orders.isEmpty
             ? _buildEmptyState()
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                 itemCount: _orders.length,
                 itemBuilder: (context, index) {
                   final order = _orders[index];
@@ -88,16 +88,16 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           key: Key(order.id.toString()),
                           direction: DismissDirection.endToStart,
                           background: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                            margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: Colors.red[400],
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.error.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: const Icon(
                               Icons.delete_forever,
-                              color: Colors.white,
+                              color: AppColors.error,
                               size: 24,
                             ),
                           ),
@@ -107,7 +107,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                               builder: (context) {
                                 return AlertDialog(
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(18),
                                   ),
                                   title: const Text('Delete Order'),
                                   content: const Text(
@@ -123,7 +123,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                       onPressed: () =>
                                           Navigator.of(context).pop(true),
                                       style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
+                                        foregroundColor: AppColors.error,
                                       ),
                                       child: const Text('Delete'),
                                     ),
@@ -142,7 +142,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 },
               ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
@@ -151,35 +151,45 @@ class _OrderListScreenState extends State<OrderListScreen> {
             ),
           );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('New Order')
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 12),
-          Text(
-            'No Orders Yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.receipt_long_outlined,
+                size: 34,
+                color: AppColors.primary,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Tap the + button to create your first order',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              'No Orders Yet',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create your first order to get started.',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -199,7 +209,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
           child: Opacity(
             opacity: value,
             child: Card(
-              margin: const EdgeInsets.only(bottom: 8),
+              margin: const EdgeInsets.only(bottom: 12),
               child: InkWell(
                 onTap: () {
                   _orderItems.clear();
@@ -211,9 +221,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     ),
                   );
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(18),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -228,17 +238,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                   'Order #${order.orderNumber}',
                                   style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   _formatDateTime(order.dateTime),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: Colors.grey[600]),
+                                  style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
                             ),
@@ -249,19 +255,15 @@ class _OrderListScreenState extends State<OrderListScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
                               'Rs. ${order.totalPrice.toStringAsFixed(0)}',
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
                                   ),
                             ),
                           ),
@@ -274,14 +276,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
                             Icon(
                               Icons.person,
                               size: 16,
-                              color: Colors.grey[600],
+                              color: AppColors.textSecondary,
                             ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 order.customerDetails,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(color: Colors.grey[700]),
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
                           ],
@@ -293,13 +294,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           Icon(
                             Icons.shopping_cart,
                             size: 16,
-                            color: Colors.grey[600],
+                            color: AppColors.textSecondary,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '$totalItems items',
                             style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: Colors.grey[600]),
+                                ?.copyWith(color: AppColors.textSecondary),
                           ),
                           const Spacer(),
                           if (order.isCashOnDelivery)
@@ -309,15 +310,15 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.orange[100],
-                                borderRadius: BorderRadius.circular(12),
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
                                 'Home Delivery',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color: Colors.orange[800],
-                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
                                     ),
                               ),
                             ),
@@ -328,8 +329,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(8),
+                            color: const Color(0xFFF0F0F0),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,8 +349,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                             .textTheme
                                             .bodySmall
                                             ?.copyWith(
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.grey[700],
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textPrimary,
                                             ),
                                       ),
                                       Expanded(
@@ -359,7 +360,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                               .textTheme
                                               .bodySmall
                                               ?.copyWith(
-                                                color: Colors.grey[700],
+                                                color: AppColors.textPrimary,
                                               ),
                                         ),
                                       ),
@@ -376,7 +377,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                     '+${orderItems.length - 3} more items',
                                     style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
-                                          color: Colors.grey[500],
+                                          color: AppColors.textSecondary,
                                           fontStyle: FontStyle.italic,
                                         ),
                                   ),

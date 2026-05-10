@@ -6,6 +6,7 @@ import '../models/orderItem.dart';
 import '../models/product.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/orderDetailsScreen.dart';
+import '../utils/app_colors.dart';
 
 class OrderProcessingScreen extends StatefulWidget {
   @override
@@ -112,7 +113,6 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Order Processing'),
-        elevation: 0,
       ),
       body: _showOrderList ? _buildOrderList() : _buildItemList(),
       floatingActionButton: FloatingActionButton(
@@ -128,9 +128,9 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
           color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -1),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -6),
             ),
           ],
         ),
@@ -144,11 +144,14 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _showOrderList ? Theme.of(context).colorScheme.primary : Colors.grey[300],
-                  foregroundColor: _showOrderList ? Colors.white : Colors.black87,
+                  backgroundColor: _showOrderList
+                      ? AppColors.primary
+                      : const Color(0xFFEFEFEF),
+                  foregroundColor:
+                      _showOrderList ? Colors.white : AppColors.textPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: const Text('Orders'),
@@ -163,11 +166,14 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: !_showOrderList ? Theme.of(context).colorScheme.primary : Colors.grey[300],
-                  foregroundColor: !_showOrderList ? Colors.white : Colors.black87,
+                  backgroundColor: !_showOrderList
+                      ? AppColors.primary
+                      : const Color(0xFFEFEFEF),
+                  foregroundColor:
+                      !_showOrderList ? Colors.white : AppColors.textPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: const Text('Order Items'),
@@ -183,7 +189,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
     return _orders.isEmpty
         ? _buildEmptyOrderState()
         : ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
             itemCount: _orders.length,
             itemBuilder: (context, index) {
               final order = _orders[index];
@@ -192,14 +198,14 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                 key: Key(order.id.toString()),
                 direction: DismissDirection.endToStart,
                 background: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: Colors.green[400],
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF1B5E20).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Icon(Icons.done, color: Colors.white, size: 24),
+                  child: const Icon(Icons.done, color: Color(0xFF1B5E20), size: 24),
                 ),
                 confirmDismiss: (direction) async {
                   return await showDialog(
@@ -207,7 +213,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                     builder: (context) {
                       return AlertDialog(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                         title: const Text('Complete Order'),
                         content: const Text('Are you sure you want to mark this order as completed?'),
@@ -219,7 +225,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(true),
                             style: TextButton.styleFrom(
-                              foregroundColor: Colors.green,
+                              foregroundColor: const Color(0xFF1B5E20),
                             ),
                             child: const Text('Complete'),
                           ),
@@ -232,9 +238,9 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                   _updateOrderStatus(order.id!);
                 },
                 child: Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  margin: const EdgeInsets.only(bottom: 12),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -244,21 +250,20 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                             Text(
                               'Order #${order.orderNumber}',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
                                 'Rs. ${order.totalPrice.toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ),
@@ -268,7 +273,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                         Text(
                           'Items in order:',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -280,7 +285,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                               children: [
                                 Text(
                                   '${item.quantity}x ',
-                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
                                 ),
                                 Expanded(
                                   child: Text(product.name),
@@ -294,9 +299,11 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: Colors.orange[50],
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.orange[200]!),
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.18),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,8 +311,8 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                                 Text(
                                   'Deal includes:',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.orange[700],
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
                                   ),
                                 ),
                                 const SizedBox(height: 3),
@@ -320,7 +327,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                                           final dealItem = _products.firstWhere((p) => p.id == id);
                                           return Text(
                                             '• ${_getItemQuantity(product.productList, id)}x ${dealItem.name}',
-                                            style: TextStyle(color: Colors.orange[700]),
+                                            style: const TextStyle(color: AppColors.textPrimary),
                                           );
                                         }).toList() ?? [],
                                       ],
@@ -344,38 +351,44 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
     return _itemQuantities.isEmpty
         ? _buildEmptyItemState()
         : ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
             itemCount: _itemQuantities.keys.length,
             itemBuilder: (context, index) {
               final product = _getProductById(_itemQuantities.keys.elementAt(index));
               final quantity = _itemQuantities[product.id];
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   leading: CircleAvatar(
-                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                     child: Icon(
                       Icons.inventory,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: AppColors.primary,
                     ),
                   ),
                   title: Text(
                     product.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
-                  subtitle: Text('Total quantity needed'),
+                  subtitle: Text(
+                    'Total quantity needed',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       '$quantity',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
                         fontSize: 16,
                       ),
                     ),
@@ -389,29 +402,33 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
   Widget _buildEmptyOrderState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 64,
-              color: Colors.grey[400],
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.receipt_long_outlined,
+                size: 34,
+                color: AppColors.primary,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
               'No Orders to Process',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               'All orders have been processed or no new orders available',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
-              ),
+              style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
           ],
@@ -423,29 +440,33 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
   Widget _buildEmptyItemState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.inventory_outlined,
-              size: 64,
-              color: Colors.grey[400],
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.inventory_outlined,
+                size: 34,
+                color: AppColors.primary,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
               'No Items to Process',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               'No order items available for processing',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
-              ),
+              style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
           ],

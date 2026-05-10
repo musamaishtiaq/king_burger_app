@@ -10,6 +10,9 @@ import '../models/orderItem.dart';
 import '../models/product.dart';
 import '../models/category.dart';
 import '../widgets/dbHelper.dart';
+import '../utils/app_colors.dart';
+import '../utils/layout_breakpoints.dart';
+import '../utils/local_image.dart';
 
 class AddOrderScreen extends StatefulWidget {
   final Function onSave;
@@ -219,29 +222,34 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.order == null ? 'Add Order' : 'Edit Order'),
-        elevation: 0,
       ),
-      body: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                _buildTopTab('Items', 0),
-                _buildTopTab('Bill ($_count)', 1),
-              ],
-            ),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: contentMaxWidth(context)),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFEFEF),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    _buildTopTab('Items', 0),
+                    _buildTopTab('Bill ($_count)', 1),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _selectedTab == 0
+                    ? _buildItemsTab(filteredProducts)
+                    : _buildBillTab(),
+              ),
+            ],
           ),
-          Expanded(
-            child: _selectedTab == 0
-                ? _buildItemsTab(filteredProducts)
-                : _buildBillTab(),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -252,19 +260,19 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       child: GestureDetector(
         onTap: () => setState(() => _selectedTab = index),
         child: Container(
-          margin: const EdgeInsets.all(3),
+          margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: selected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Center(
             child: Text(
               text,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
+                color: selected ? Colors.white : AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
               ),
             ),
           ),
@@ -276,18 +284,18 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   Widget _buildItemsTab(List<Product> filteredProducts) {
     return Column(
       children: [
-        // 🔹 Horizontal Categories
         Container(
-          height: 60,
+          height: 68,
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: _categories.length + 1, // +1 for "All" option
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          itemCount: _categories.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _buildCategoryChip(
                   label: 'All',
+                  imagePath: null,
                   selected: _selectedCategoryId == null,
                   onTap: () {
                     setState(() => _selectedCategoryId = null);
@@ -297,6 +305,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               final cat = _categories[index - 1];
               return _buildCategoryChip(
                 label: cat.name,
+                imagePath: cat.imagePath,
                 selected: _selectedCategoryId == cat.id,
                 onTap: () {
                   setState(() => _selectedCategoryId = cat.id);
@@ -307,63 +316,116 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         ),
         const Divider(height: 1, thickness: 0.5),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            itemCount: filteredProducts.length,
-            itemBuilder: (context, index) {
-              final product = filteredProducts[index];
-              final existing = _orderItems.firstWhere(
-                (item) => item.productId == product.id,
-                orElse: () =>
-                    OrderItem(orderId: 0, productId: 0, quantity: 0, price: 0),
-              );
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  title: Text(
-                    product.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+          child: filteredProducts.isEmpty
+              ? Center(
+                  child: Text(
+                    'No items in this category',
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
-                  subtitle: Text(
-                    'Rs. ${product.price.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 16),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    childAspectRatio: 0.66,
                   ),
-                  trailing: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: existing.quantity > 0 ? () => _removeProduct(product) : null,
-                          color: existing.quantity > 0 ? Colors.red[600] : Colors.grey[400],
+                  itemCount: filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = filteredProducts[index];
+                    final existing = _orderItems.firstWhere(
+                      (item) => item.productId == product.id,
+                      orElse: () => OrderItem(
+                        orderId: 0,
+                        productId: 0,
+                        quantity: 0,
+                        price: 0,
+                      ),
+                    );
+                    return Card(
+                      margin: EdgeInsets.zero,
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LocalOrAssetImage(
+                                  path: product.imagePath,
+                                  entity: LocalImageEntity.product,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              product.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            Text(
+                              'Rs. ${product.price.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F0F0),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline,
+                                    ),
+                                    onPressed: existing.quantity > 0
+                                        ? () => _removeProduct(product)
+                                        : null,
+                                    color: existing.quantity > 0
+                                        ? AppColors.error
+                                        : AppColors.disabled,
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  Text(
+                                    existing.quantity.toString(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add_circle_outline,
+                                    ),
+                                    onPressed: () => _addProduct(product),
+                                    color: AppColors.primary,
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          child: Text(
-                            existing.quantity.toString(),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline),
-                          onPressed: () => _addProduct(product),
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -373,22 +435,22 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           if (_orderItems.isNotEmpty) ...[
             Card(
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [
-                        Icon(Icons.shopping_cart, color: Theme.of(context).colorScheme.primary),
+                        const Icon(Icons.shopping_cart, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Order Items',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
@@ -399,10 +461,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                       title: Text(product.name),
-                      subtitle: Text('Qty: ${item.quantity}'),
+                      subtitle: Text(
+                        'Qty: ${item.quantity}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       trailing: Text(
                         'Rs. ${item.price.toStringAsFixed(0)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     );
                   }).toList(),
@@ -412,14 +477,20 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             const SizedBox(height: 12),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Total Items:', style: Theme.of(context).textTheme.bodyLarge),
-                        Text('$_count', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          '$_count',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -430,8 +501,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                         Text(
                           'Rs. ${_totalPrice.toStringAsFixed(0)}',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
@@ -444,18 +515,18 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ],
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.receipt, color: Theme.of(context).colorScheme.primary),
+                      const Icon(Icons.receipt, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
                         'Order Details',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
@@ -466,7 +537,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Order Number',
-                      border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     validator: (v) => v!.isEmpty ? 'Required' : null,
@@ -477,7 +547,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Date Time',
-                      border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     validator: (v) => v!.isEmpty ? 'Required' : null,
@@ -487,7 +556,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     initialValue: _customerDetails,
                     decoration: const InputDecoration(
                       labelText: 'Customer Details',
-                      border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     onChanged: (v) => _customerDetails = v,
@@ -508,14 +576,11 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ElevatedButton(
             onPressed: _saveOrder,
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             child: Text(
               widget.order == null ? 'Save Order' : 'Update Order',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(height: 8),
@@ -526,18 +591,38 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
   Widget _buildCategoryChip({
     required String label,
+    required String? imagePath,
     required bool selected,
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
+        avatar: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: LocalOrAssetImage(
+              path: imagePath,
+              entity: LocalImageEntity.category,
+              fit: BoxFit.cover,
+              width: 28,
+              height: 28,
+            ),
+          ),
+        ),
         label: Text(label),
         selected: selected,
         onSelected: (_) => onTap(),
-        selectedColor: Theme.of(context).colorScheme.secondary,
-        backgroundColor: Colors.grey[300],
-        labelStyle: TextStyle(color: selected ? Colors.white : Colors.black),
+        selectedColor: AppColors.primary.withValues(alpha: 0.15),
+        backgroundColor: const Color(0xFFF0F0F0),
+        side: const BorderSide(color: Colors.transparent),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        labelStyle: TextStyle(
+          color: selected ? AppColors.primary : AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

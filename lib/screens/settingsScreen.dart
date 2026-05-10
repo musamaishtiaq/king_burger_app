@@ -7,6 +7,7 @@ import '../screens/salesReportScreen.dart';
 import '../widgets/dropdownField.dart';
 import '../screens/printerSettingsScreen.dart';
 import '../screens/backupScreen.dart';
+import '../utils/app_colors.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -102,6 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           content: Text(message),
           actions: [
             TextButton(
@@ -134,8 +136,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icon(
                   icon,
                   color: enabled
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey[600],
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -145,13 +147,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Text(
                         title,
                         style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       Text(
                         subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -175,10 +175,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      title: Text(
+        title,
+        style: Theme.of(context)
+            .textTheme
+            .bodyMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        style: Theme.of(context).textTheme.bodySmall,
       ),
       trailing: Switch(value: value, onChanged: onChanged),
     );
@@ -193,40 +199,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        elevation: 0,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             // Header Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.print,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        const Icon(Icons.print, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Receipt Printing Settings',
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Configure what information to include on customer and internal receipts',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
@@ -317,10 +317,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: const Text('Save Settings'),
                   ),
@@ -335,11 +332,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _resetSettings();
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      backgroundColor: Colors.grey[600],
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: const Color(0xFFEFEFEF),
+                      foregroundColor: AppColors.textPrimary,
                     ),
                     child: const Text('Reset Settings'),
                   ),

@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import '../screens/orderListScreen.dart';
 import '../screens/productListScreen.dart';
 import '../screens/categoryListScreen.dart';
-import '../screens/printerSettingsScreen.dart';
 import '../screens/salesReportScreen.dart';
-import '../screens/BackupScreen.dart';
-import '../screens/settingsScreen.dart';
+import '../utils/app_colors.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -61,65 +59,61 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -1),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -6),
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Theme.of(context).colorScheme.secondary,
-          unselectedItemColor: Colors.grey[500],
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 11,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 11,
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: AppColors.primary,
+            unselectedItemColor: AppColors.textSecondary,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
+            ),
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            elevation: 0,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.receipt_long, size: 22),
+                label: 'Orders',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.inventory_2, size: 22),
+                label: 'Products',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.category, size: 22),
+                label: 'Category',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.analytics, size: 22),
+                label: 'Reporting',
+              ),
+            ],
           ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long, size: 22),
-              label: 'Orders',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2, size: 22),
-              label: 'Products',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.category, size: 22),
-              label: 'Category',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.analytics, size: 22),
-              label: 'Reporting',
-            ),
-          ],
         ),
       ),
     );
-  }
-
-  String _getAppBarTitle() {
-    switch (_selectedIndex) {
-      case 0:
-        return 'Orders';
-      case 1:
-        return 'Products';
-      case 2:
-        return 'Categories';
-      case 3:
-        return 'Sales Reports';
-      default:
-        return 'King Burger POS';
-    }
   }
 }

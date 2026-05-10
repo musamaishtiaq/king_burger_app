@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/category.dart';
-import '../widgets/dbHelper.dart';
 import '../screens/addCategoryScreen.dart';
-import '../screens/settingsScreen.dart';
-import '../screens/printerSettingsScreen.dart';
-import '../screens/backupScreen.dart';
+import '../utils/app_colors.dart';
+import '../utils/layout_breakpoints.dart';
+import '../utils/local_image.dart';
+import '../widgets/dbHelper.dart';
 
 class CategoryListScreen extends StatefulWidget {
   @override
@@ -47,10 +47,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     _fetchCategories();
   }
 
-  int _getItemQuantity(List<int>? productList, int productId) {
-    return productList?.where((id) => id == productId).length ?? 0;
-  }
-
   @override
   Widget build(BuildContext context) {
     final filteredCategories = _categories.toList();
@@ -58,32 +54,41 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Categories'),
-        elevation: 0,
       ),
       body: RefreshIndicator(
         onRefresh: _refreshCategories,
-        child: filteredCategories.isEmpty
-            ? _buildEmptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                itemCount: filteredCategories.length,
-                itemBuilder: (context, index) {
-                  final category = filteredCategories[index];
-                  return _canDelete!
-                      ? Dismissible(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentMaxWidth(context)),
+            child: filteredCategories.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      12,
+                      16,
+                      96 + MediaQuery.paddingOf(context).bottom,
+                    ),
+                    itemCount: filteredCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = filteredCategories[index];
+                      final tile = _buildCategoryTile(category);
+                      if (_canDelete == true) {
+                        return Dismissible(
                           key: Key(category.id.toString()),
                           direction: DismissDirection.endToStart,
                           background: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                            margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: Colors.red[400],
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.error.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: const Icon(
                               Icons.delete_forever,
-                              color: Colors.white,
+                              color: AppColors.error,
                               size: 24,
                             ),
                           ),
@@ -93,10 +98,12 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                               builder: (context) {
                                 return AlertDialog(
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(18),
                                   ),
                                   title: const Text('Delete Category'),
-                                  content: const Text('Are you sure you want to delete this category?'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this category?',
+                                  ),
                                   actions: [
                                     TextButton(
                                       onPressed: () =>
@@ -107,7 +114,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                                       onPressed: () =>
                                           Navigator.of(context).pop(true),
                                       style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
+                                        foregroundColor: AppColors.error,
                                       ),
                                       child: const Text('Delete'),
                                     ),
@@ -119,47 +126,59 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                           onDismissed: (direction) {
                             _deleteCategory(category.id!);
                           },
-                          child: _buildCategoryTile(category, index),
-                        )
-                      : _buildCategoryTile(category, index);
-                },
-              ),
+                          child: tile,
+                        );
+                      }
+                      return tile;
+                    },
+                  ),
+          ),
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddCategoryScreen(onSave: _fetchCategories),
+              builder: (context) =>
+                  AddCategoryScreen(onSave: _fetchCategories),
             ),
           );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('New Category')
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildCategoryTile(Category category, int index) {
+  Widget _buildCategoryTile(Category category) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-          child: Icon(
-            Icons.category,
-            color: Theme.of(context).colorScheme.primary,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 64,
+            height: 64,
+            child: LocalOrAssetImage(
+              path: category.imagePath,
+              entity: LocalImageEntity.category,
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         title: Text(
           category.name,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w800),
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 16,
-          color: Colors.grey[400],
+          color: AppColors.textSecondary,
         ),
         onTap: () {
           Navigator.push(
@@ -179,29 +198,33 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.category_outlined,
-              size: 64,
-              color: Colors.grey[400],
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.category_outlined,
+                size: 34,
+                color: AppColors.primary,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
               'No Categories Found',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
-              'Tap the + button to add your first category',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
-              ),
+              'Add a category to get started.',
+              style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
           ],
