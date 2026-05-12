@@ -5,6 +5,7 @@ import '../screens/settingsScreen.dart';
 import '../screens/printerSettingsScreen.dart';
 import '../screens/backupScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/layout_breakpoints.dart';
 
 class SalesReportScreen extends StatefulWidget {
   @override
@@ -163,11 +164,20 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: contentMaxWidth(context)),
+          child: Column(
+            children: [
           // Date Selection Card
           Card(
-            margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            margin: EdgeInsets.fromLTRB(
+              horizontalScreenPadding(context),
+              12,
+              horizontalScreenPadding(context),
+              12,
+            ),
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -235,7 +245,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           // Summary Cards
           if (_report.isNotEmpty) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalScreenPadding(context),
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -263,7 +275,12 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
             child: _report.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalScreenPadding(context),
+                      0,
+                      horizontalScreenPadding(context),
+                      rootTabBodyBottomScrollPadding(context),
+                    ),
                     itemCount: _report.length,
                     itemBuilder: (context, index) {
                       final item = _report[index];
@@ -342,7 +359,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                     },
                   ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

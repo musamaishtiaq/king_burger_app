@@ -230,7 +230,12 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           child: Column(
             children: [
               Container(
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                margin: EdgeInsets.fromLTRB(
+                  horizontalScreenPadding(context),
+                  12,
+                  horizontalScreenPadding(context),
+                  8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFEFEF),
                   borderRadius: BorderRadius.circular(18),
@@ -289,7 +294,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalScreenPadding(context),
+          ),
           itemCount: _categories.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -324,13 +331,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                   ),
                 )
               : GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 16),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 6,
-                    crossAxisSpacing: 6,
-                    childAspectRatio: 0.66,
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalScreenPadding(context),
+                    8,
+                    horizontalScreenPadding(context),
+                    16,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: catalogGridCrossAxisCount(context),
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: orderItemsGridChildAspectRatio(context),
                   ),
                   itemCount: filteredProducts.length,
                   itemBuilder: (context, index) {

@@ -65,10 +65,10 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                 ? _buildEmptyState()
                 : ListView.builder(
                     padding: EdgeInsets.fromLTRB(
-                      16,
+                      horizontalScreenPadding(context),
                       12,
-                      16,
-                      96 + MediaQuery.paddingOf(context).bottom,
+                      horizontalScreenPadding(context),
+                      rootTabBodyBottomScrollPadding(context),
                     ),
                     itemCount: filteredCategories.length,
                     itemBuilder: (context, index) {

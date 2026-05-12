@@ -5,6 +5,7 @@ import '../screens/productListScreen.dart';
 import '../screens/categoryListScreen.dart';
 import '../screens/salesReportScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/layout_breakpoints.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -13,7 +14,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  late PageController _pageController;
 
   final List<Widget> _screens = [
     OrderListScreen(),
@@ -22,41 +22,79 @@ class _MainScreenState extends State<MainScreen> {
     SalesReportScreen(),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final wide = useNavigationRailLayout(context);
+    final railExtended =
+        MediaQuery.sizeOf(context).width >= 900;
+
+    final body = IndexedStack(
+      index: _selectedIndex,
+      children: _screens,
+    );
+
+    if (wide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _onItemTapped,
+              labelType: railExtended
+                  ? NavigationRailLabelType.all
+                  : NavigationRailLabelType.selected,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              selectedIconTheme: const IconThemeData(color: AppColors.primary),
+              selectedLabelTextStyle: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedIconTheme: IconThemeData(
+                color: AppColors.textSecondary,
+              ),
+              unselectedLabelTextStyle: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              indicatorColor: AppColors.primary.withValues(alpha: 0.12),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long),
+                  label: Text('Orders'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  selectedIcon: Icon(Icons.inventory_2),
+                  label: Text('Products'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.category_outlined),
+                  selectedIcon: Icon(Icons.category),
+                  label: Text('Category'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.analytics_outlined),
+                  selectedIcon: Icon(Icons.analytics),
+                  label: Text('Reporting'),
+                ),
+              ],
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        children: _screens,
-      ),
+      body: body,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,

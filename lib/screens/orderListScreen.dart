@@ -6,10 +6,8 @@ import '../models/orderItem.dart';
 import '../models/product.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/addOrderScreen.dart';
-import '../screens/settingsScreen.dart';
-import '../screens/printerSettingsScreen.dart';
-import '../screens/backupScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/layout_breakpoints.dart';
 
 class OrderListScreen extends StatefulWidget {
   @override
@@ -75,72 +73,84 @@ class _OrderListScreenState extends State<OrderListScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _refreshOrders,
-        child: _orders.isEmpty
-            ? _buildEmptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                itemCount: _orders.length,
-                itemBuilder: (context, index) {
-                  final order = _orders[index];
-                  final orderItems = _getOrderItems(order.id!);
-                  return _canDelete!
-                      ? Dismissible(
-                          key: Key(order.id.toString()),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.error.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: const Icon(
-                              Icons.delete_forever,
-                              color: AppColors.error,
-                              size: 24,
-                            ),
-                          ),
-                          confirmDismiss: (direction) async {
-                            return await showDialog(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  title: const Text('Delete Order'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this order?',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: AppColors.error,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentMaxWidth(context)),
+            child: _orders.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalScreenPadding(context),
+                      12,
+                      horizontalScreenPadding(context),
+                      rootTabBodyBottomScrollPadding(context),
+                    ),
+                    itemCount: _orders.length,
+                    itemBuilder: (context, index) {
+                      final order = _orders[index];
+                      final orderItems = _getOrderItems(order.id!);
+                      return _canDelete!
+                          ? Dismissible(
+                              key: Key(order.id.toString()),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                alignment: Alignment.centerRight,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: const Icon(
+                                  Icons.delete_forever,
+                                  color: AppColors.error,
+                                  size: 24,
+                                ),
+                              ),
+                              confirmDismiss: (direction) async {
+                                return await showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(18),
                                       ),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
+                                      title: const Text('Delete Order'),
+                                      content: const Text(
+                                        'Are you sure you want to delete this order?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(true),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: AppColors.error,
+                                          ),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 );
                               },
-                            );
-                          },
-                          onDismissed: (direction) {
-                            _dbHelper.deleteOrder(order.id!);
-                            _fetchOrders();
-                          },
-                          child: _buildOrderCard(order, orderItems),
-                        )
-                      : _buildOrderCard(order, orderItems);
-                },
-              ),
+                              onDismissed: (direction) {
+                                _dbHelper.deleteOrder(order.id!);
+                                _fetchOrders();
+                              },
+                              child: _buildOrderCard(order, orderItems),
+                            )
+                          : _buildOrderCard(order, orderItems);
+                    },
+                  ),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

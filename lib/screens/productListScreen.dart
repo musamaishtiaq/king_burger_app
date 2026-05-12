@@ -86,7 +86,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalScreenPadding(context),
+                    ),
                     itemCount: _categories.length + 1,
                     itemBuilder: (context, index) {
                       if (index == 0) {
@@ -116,18 +118,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   child: filteredProducts.isEmpty
                       ? _buildEmptyState()
                       : GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(
-                            10,
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalScreenPadding(context),
                             12,
-                            10,
-                            96,
+                            horizontalScreenPadding(context),
+                            rootTabBodyBottomScrollPadding(context),
                           ),
                           gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 6,
-                            crossAxisSpacing: 6,
-                            childAspectRatio: 0.62,
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount:
+                                catalogGridCrossAxisCount(context),
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio:
+                                catalogGridChildAspectRatio(context),
                           ),
                           itemCount: filteredProducts.length,
                           itemBuilder: (context, index) {
