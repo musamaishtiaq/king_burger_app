@@ -173,6 +173,20 @@ class DbHelper {
         : [];
   }
 
+  /// Products in visible categories only — includes hidden products (`p.isVisible = 0`)
+  /// so the Products tab can show them and toggle visibility. Catalog / orders use
+  /// [getVisibleCatalogProducts] instead.
+  Future<List<Product>> getProductsInVisibleCategories() async {
+    final db = await database;
+    final maps = await db.rawQuery('''
+      SELECT p.* FROM products p
+      INNER JOIN categories c ON c.id = p.categoryId
+      WHERE c.isVisible = 1
+      ORDER BY p.id DESC
+    ''');
+    return maps.map((m) => Product.fromMap(m)).toList();
+  }
+
   Future<int> updateProduct(Product product) async {
     final db = await database;
     return await db.update('products', product.toMap(),
@@ -300,6 +314,52 @@ class DbHelper {
     return "${appLetter}_${(count + 1).toString().padLeft(orderNoMaxLength, '0')}";
   }
 
+  static const String _kOrderDedupAnchorMs = 'orderDedupAnchorEpochMs';
+
+  /// Rolling 24h window anchored in prefs; resets when expired. Used to cap
+  /// duplicate rows with the same [orderNumber] (e.g. repeated Save taps).
+  Future<DateTimeRange> _orderNumberDedupWindow() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final existing = prefs.getInt(_kOrderDedupAnchorMs);
+    DateTime anchor;
+    if (existing == null) {
+      anchor = DateTime(now.year, now.month, now.day);
+      await prefs.setInt(_kOrderDedupAnchorMs, anchor.millisecondsSinceEpoch);
+    } else {
+      anchor = DateTime.fromMillisecondsSinceEpoch(existing);
+      final end = anchor.add(const Duration(hours: 24));
+      if (now.isAfter(end)) {
+        anchor = DateTime(now.year, now.month, now.day);
+        await prefs.setInt(_kOrderDedupAnchorMs, anchor.millisecondsSinceEpoch);
+      }
+    }
+    final windowEnd = anchor.add(const Duration(hours: 24));
+    return DateTimeRange(start: anchor, end: windowEnd);
+  }
+
+  /// How many orders already use [orderNumber] inside the current dedup window.
+  Future<int> countOrdersWithSameNumberInDedupWindow(String orderNumber) async {
+    final range = await _orderNumberDedupWindow();
+    final db = await database;
+    final startStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(range.start);
+    final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(range.end);
+    final result = await db.rawQuery(
+      '''
+      SELECT COUNT(*) AS cnt FROM orders
+      WHERE orderNumber = ? AND dateTime >= ? AND dateTime < ?
+      ''',
+      [orderNumber, startStr, endStr],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// At most two rows with the same order number per 24h window (blocks a 3rd).
+  Future<bool> canInsertOrderWithNumber(String orderNumber) async {
+    final n = await countOrdersWithSameNumberInDedupWindow(orderNumber);
+    return n < 2;
+  }
+
   Future<List<Map<String, dynamic>>> getSalesReport(
       DateTime start, DateTime end) async {
     final db = await database;
@@ -322,6 +382,23 @@ class DbHelper {
     GROUP BY p.id, p.name
     ORDER BY totalQty DESC
   ''', [startStr, endStr]);
+  }
+
+  /// Orders whose [dateTime] falls in the same inclusive range as [getSalesReport].
+  Future<List<Order>> getOrdersForSalesReport(
+      DateTime start, DateTime end) async {
+    final db = await database;
+    final startStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(start);
+    final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
+    final result = await db.query(
+      'orders',
+      where: 'dateTime BETWEEN ? AND ?',
+      whereArgs: [startStr, endStr],
+      orderBy: 'dateTime DESC',
+    );
+    return result.isNotEmpty
+        ? result.map((m) => Order.fromMap(m)).toList()
+        : [];
   }
 
   Future<void> insertOrder(Order order, List<OrderItem> orderItems) async {

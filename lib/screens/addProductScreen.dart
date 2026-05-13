@@ -61,15 +61,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _loadProductCategories() async {
-    final cats = await _dbHelper.getCategories();
-    setState(() {
-      _productLineCategories = cats.reversed.toList();
-      if (widget.product != null) {
-        _selectedCategoryId = widget.product!.categoryId;
-      } else if (_productLineCategories.isNotEmpty) {
-        _selectedCategoryId = _productLineCategories.first.id;
+    final visible = await _dbHelper.getVisibleCategories();
+    var list = visible.reversed.toList();
+    if (widget.product != null) {
+      final cid = widget.product!.categoryId;
+      final hasCurrent = list.any((c) => c.id == cid);
+      if (!hasCurrent) {
+        final current = await _dbHelper.getCategory(cid);
+        if (current != null) {
+          list = [...list, current];
+        }
       }
-    });
+      _selectedCategoryId = cid;
+    } else if (list.isNotEmpty) {
+      _selectedCategoryId = list.first.id;
+    } else {
+      _selectedCategoryId = null;
+    }
+    if (!mounted) return;
+    setState(() => _productLineCategories = list);
   }
 
   Future<void> _fetchNonDealProducts() async {
@@ -126,6 +136,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
           .toList();
     }
     setState(() {});
+  }
+
+  String? _categoryImagePathForId(int? categoryId) {
+    if (categoryId == null) return null;
+    for (final c in _productLineCategories) {
+      if (c.id == categoryId) return c.imagePath;
+    }
+    for (final c in _dealChipCategories) {
+      if (c.id == categoryId) return c.imagePath;
+    }
+    return null;
+  }
+
+  String? _categoryImagePathForProduct(Product p) {
+    return _categoryImagePathForId(p.categoryId);
   }
 
   void _updateTotal(double price, bool add) {
@@ -220,6 +245,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     path: _clearImage
                         ? null
                         : (_pickedImagePath ?? widget.product?.imagePath),
+                    fallbackPath: _clearImage
+                        ? null
+                        : _categoryImagePathForId(
+                            _selectedCategoryId ?? widget.product?.categoryId,
+                          ),
                     entity: LocalImageEntity.product,
                     fit: BoxFit.cover,
                   ),
@@ -250,7 +280,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ],
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               TextFormField(
                 initialValue: _name,
                 decoration: const InputDecoration(
@@ -436,6 +466,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                               BorderRadius.circular(10),
                                           child: LocalOrAssetImage(
                                             path: product.imagePath,
+                                            fallbackPath:
+                                                _categoryImagePathForProduct(
+                                                    product),
                                             entity: LocalImageEntity.product,
                                             fit: BoxFit.cover,
                                           ),
@@ -534,7 +567,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               ElevatedButton(
                 onPressed: _saveForm,
                 style: ElevatedButton.styleFrom(

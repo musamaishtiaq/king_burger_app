@@ -8,6 +8,7 @@ import '../widgets/dbHelper.dart';
 import '../screens/addOrderScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
+import '../utils/main_tab_index.dart';
 
 class OrderListScreen extends StatefulWidget {
   @override
@@ -18,19 +19,34 @@ class _OrderListScreenState extends State<OrderListScreen> {
   List<Order> _orders = [];
   List<OrderItem> _orderItems = [];
   List<Product> _products = [];
-  DbHelper _dbHelper = DbHelper();
-  bool? _canDelete;
+  final DbHelper _dbHelper = DbHelper();
+  bool _canDelete = false;
+
+  void _onOrdersTabVisible() {
+    if (mainTabIndex.value == 0 && mounted) {
+      _refreshOrders();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _fetchDelete();
-    _fetchOrders();
+    mainTabIndex.addListener(_onOrdersTabVisible);
+    _refreshOrders();
+  }
+
+  @override
+  void dispose() {
+    mainTabIndex.removeListener(_onOrdersTabVisible);
+    super.dispose();
   }
 
   Future<void> _fetchDelete() async {
     final prefs = await SharedPreferences.getInstance();
-    _canDelete = prefs.getBool('enableDelete') ?? false;
+    if (!mounted) return;
+    setState(() {
+      _canDelete = prefs.getBool('enableDelete') ?? false;
+    });
   }
 
   Future<void> _fetchOrders() async {
@@ -57,12 +73,11 @@ class _OrderListScreenState extends State<OrderListScreen> {
     return _orderItems.where((item) => item.orderId == orderId).toList();
   }
 
-  Product _getProductById(int productId) {
-    return _products.firstWhere((item) => item.id == productId);
-  }
-
-  int _getItemQuantity(List<int>? productList, int productId) {
-    return productList?.where((id) => id == productId).length ?? 0;
+  Product? _tryGetProductById(int productId) {
+    for (final p in _products) {
+      if (p.id == productId) return p;
+    }
+    return null;
   }
 
   @override
@@ -82,7 +97,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 : ListView.builder(
                     padding: EdgeInsets.fromLTRB(
                       horizontalScreenPadding(context),
-                      12,
+                      8,
                       horizontalScreenPadding(context),
                       rootTabBodyBottomScrollPadding(context),
                     ),
@@ -90,12 +105,12 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     itemBuilder: (context, index) {
                       final order = _orders[index];
                       final orderItems = _getOrderItems(order.id!);
-                      return _canDelete!
+                      return _canDelete
                           ? Dismissible(
-                              key: Key(order.id.toString()),
+                              key: ValueKey('order_${order.id}'),
                               direction: DismissDirection.endToStart,
                               background: Container(
-                                margin: const EdgeInsets.only(bottom: 12),
+                                margin: const EdgeInsets.only(bottom: 8),
                                 decoration: BoxDecoration(
                                   color: AppColors.error.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(18),
@@ -110,7 +125,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                 ),
                               ),
                               confirmDismiss: (direction) async {
-                                return await showDialog(
+                                return await showDialog<bool>(
                                   context: context,
                                   builder: (context) {
                                     return AlertDialog(
@@ -138,11 +153,22 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                       ],
                                     );
                                   },
-                                );
+                                ) ??
+                                    false;
                               },
-                              onDismissed: (direction) {
-                                _dbHelper.deleteOrder(order.id!);
-                                _fetchOrders();
+                              onDismissed: (direction) async {
+                                try {
+                                  await _dbHelper.deleteOrder(order.id!);
+                                  if (mounted) await _fetchOrders();
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text('Delete failed: $e')),
+                                    );
+                                    await _fetchOrders();
+                                  }
+                                }
                               },
                               child: _buildOrderCard(order, orderItems),
                             )
@@ -220,7 +246,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
           child: Opacity(
             opacity: value,
             child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: 8),
               child: InkWell(
                 onTap: () {
                   _orderItems.clear();
@@ -347,7 +373,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ...orderItems.take(3).map((item) {
-                                final product = _getProductById(item.productId);
+                                final product = _tryGetProductById(item.productId);
+                                final label = product?.name ?? '(removed item)';
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 1,
@@ -366,7 +393,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                       ),
                                       Expanded(
                                         child: Text(
-                                          product.name,
+                                          label,
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodySmall

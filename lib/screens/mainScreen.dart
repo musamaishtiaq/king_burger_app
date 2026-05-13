@@ -6,6 +6,7 @@ import '../screens/categoryListScreen.dart';
 import '../screens/salesReportScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
+import '../utils/main_tab_index.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -23,6 +24,7 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   void _onItemTapped(int index) {
+    mainTabIndex.value = index;
     setState(() {
       _selectedIndex = index;
     });

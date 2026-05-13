@@ -60,8 +60,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
   // UI
   int _selectedTab = 0; // 0 = Items, 1 = Bill
-
-  @override
+  bool _isSaving = false;
   void initState() {
     super.initState();
     _fetchPrintingChecks();
@@ -128,6 +127,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     }
     merged.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
     setState(() => _products = merged);
+  }
+
+  String? _categoryImagePath(int categoryId) {
+    for (final c in _categories) {
+      if (c.id == categoryId) return c.imagePath;
+    }
+    return null;
   }
 
   Future<void> _fetchOrderItems(int orderId) async {
@@ -226,7 +232,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   }
 
   void _saveOrder() async {
-    if (_formKey.currentState!.validate() && _orderItems.isNotEmpty) {
+    if (!_formKey.currentState!.validate() || _orderItems.isEmpty) return;
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    try {
       await _fetchPrintingChecks();
       final newOrder = Order(
         orderNumber: _orderNumber,
@@ -238,6 +247,20 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       );
 
       if (widget.order == null) {
+        final allowed =
+            await _dbHelper.canInsertOrderWithNumber(_orderNumber);
+        if (!allowed) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'This order number was already saved twice in the last 24 hours. Open a new order or try later.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
         await _dbHelper.insertOrder(newOrder, _orderItems);
       } else {
         newOrder.id = widget.order!.id;
@@ -270,7 +293,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       }
 
       widget.onSave();
-      Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -440,6 +465,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                 borderRadius: BorderRadius.circular(10),
                                 child: LocalOrAssetImage(
                                   path: product.imagePath,
+                                  fallbackPath:
+                                      _categoryImagePath(product.categoryId),
                                   entity: LocalImageEntity.product,
                                   fit: BoxFit.cover,
                                 ),
@@ -518,7 +545,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         children: [
           if (_orderItems.isNotEmpty) ...[
             Card(
@@ -540,10 +567,14 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     ),
                   ),
                   ..._orderItems.map((item) {
-                    final product = _products.firstWhere((p) => p.id == item.productId);
+                    final match =
+                        _products.where((p) => p.id == item.productId);
+                    final name = match.isEmpty
+                        ? '(removed item)'
+                        : match.first.name;
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                      title: Text(product.name),
+                      title: Text(name),
                       subtitle: Text(
                         'Qty: ${item.quantity}',
                         style: Theme.of(context).textTheme.bodySmall,
@@ -557,7 +588,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -594,7 +625,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
           ],
           Card(
             child: Padding(
@@ -614,7 +645,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   TextFormField(
                     initialValue: _orderNumber,
                     readOnly: true,
@@ -624,7 +655,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     ),
                     validator: (v) => v!.isEmpty ? 'Required' : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   TextFormField(
                     initialValue: _dateTime,
                     readOnly: true,
@@ -634,7 +665,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     ),
                     validator: (v) => v!.isEmpty ? 'Required' : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   TextFormField(
                     initialValue: _customerDetails,
                     decoration: const InputDecoration(
@@ -643,7 +674,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     ),
                     onChanged: (v) => _customerDetails = v,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Home Delivery'),
@@ -655,9 +686,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               ),
             ),
           ),
-            const SizedBox(height: 16),
+          const SizedBox(height: 8),
           ElevatedButton(
-            onPressed: _saveOrder,
+            onPressed: _isSaving ? null : _saveOrder,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),

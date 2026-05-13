@@ -5,6 +5,7 @@ import '../models/category.dart';
 import '../screens/addCategoryScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
+import '../utils/main_tab_index.dart';
 import '../utils/local_image.dart';
 import '../widgets/dbHelper.dart';
 
@@ -14,20 +15,35 @@ class CategoryListScreen extends StatefulWidget {
 }
 
 class _CategoryListScreenState extends State<CategoryListScreen> {
-  DbHelper _dbHelper = DbHelper();
+  final DbHelper _dbHelper = DbHelper();
   List<Category> _categories = [];
-  bool? _canDelete;
+  bool _canDelete = false;
+
+  void _onCategoryTabVisible() {
+    if (mainTabIndex.value == 2 && mounted) {
+      _refreshCategories();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _fetchDelete();
-    _fetchCategories();
+    mainTabIndex.addListener(_onCategoryTabVisible);
+    _refreshCategories();
+  }
+
+  @override
+  void dispose() {
+    mainTabIndex.removeListener(_onCategoryTabVisible);
+    super.dispose();
   }
 
   Future<void> _fetchDelete() async {
     final prefs = await SharedPreferences.getInstance();
-    _canDelete = prefs.getBool('enableDelete') ?? false;
+    if (!mounted) return;
+    setState(() {
+      _canDelete = prefs.getBool('enableDelete') ?? false;
+    });
   }
 
   Future<void> _fetchCategories() async {
@@ -44,7 +60,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
 
   Future<void> _deleteCategory(int id) async {
     await _dbHelper.deleteCategory(id);
-    _fetchCategories();
+    await _fetchCategories();
   }
 
   Future<void> _toggleCategoryVisible(Category category) async {
@@ -73,7 +89,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                 : ListView.builder(
                     padding: EdgeInsets.fromLTRB(
                       horizontalScreenPadding(context),
-                      12,
+                      8,
                       horizontalScreenPadding(context),
                       rootTabBodyBottomScrollPadding(context),
                     ),
@@ -81,12 +97,12 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                     itemBuilder: (context, index) {
                       final category = filteredCategories[index];
                       final tile = _buildCategoryTile(category);
-                      if (_canDelete == true) {
+                      if (_canDelete) {
                         return Dismissible(
-                          key: Key(category.id.toString()),
+                          key: ValueKey('cat_${category.id}'),
                           direction: DismissDirection.endToStart,
                           background: Container(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
                               color: AppColors.error.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(18),
@@ -100,7 +116,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                             ),
                           ),
                           confirmDismiss: (direction) async {
-                            return await showDialog(
+                            return await showDialog<bool>(
                               context: context,
                               builder: (context) {
                                 return AlertDialog(
@@ -128,10 +144,21 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                                   ],
                                 );
                               },
-                            );
+                            ) ??
+                                false;
                           },
-                          onDismissed: (direction) {
-                            _deleteCategory(category.id!);
+                          onDismissed: (direction) async {
+                            try {
+                              await _deleteCategory(category.id!);
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('Delete failed: $e')),
+                                );
+                                await _fetchCategories();
+                              }
+                            }
                           },
                           child: tile,
                         );
@@ -162,7 +189,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     return Opacity(
       opacity: category.isVisible ? 1 : 0.55,
       child: Card(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 8),
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

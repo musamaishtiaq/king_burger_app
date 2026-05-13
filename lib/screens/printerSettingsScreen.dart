@@ -214,7 +214,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(),
-              SizedBox(height: 16),
+              SizedBox(height: 10),
               Text('Loading settings...'),
             ],
           ),
@@ -271,7 +271,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     Text(
                       'Receipt logo',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(

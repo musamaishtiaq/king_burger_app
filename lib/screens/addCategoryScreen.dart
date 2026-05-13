@@ -133,7 +133,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                   ],
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               TextFormField(
                 focusNode: _nameFocusNode,
                 initialValue: _name,
@@ -153,7 +153,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                   _name = value!;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: _saveForm,
                 style: ElevatedButton.styleFrom(

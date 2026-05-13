@@ -7,6 +7,7 @@ import '../widgets/dbHelper.dart';
 import '../screens/addProductScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
+import '../utils/main_tab_index.dart';
 import '../utils/local_image.dart';
 
 class ProductListScreen extends StatefulWidget {
@@ -15,34 +16,55 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  DbHelper _dbHelper = DbHelper();
+  final DbHelper _dbHelper = DbHelper();
   List<Category> _categories = [];
   int? _selectedCategoryId;
   List<Product> _products = [];
-  bool? _canDelete;
+  bool _canDelete = false;
+
+  void _onProductsTabVisible() {
+    if (mainTabIndex.value == 1 && mounted) {
+      _refreshProducts();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    mainTabIndex.addListener(_onProductsTabVisible);
     _fetchDelete();
     _fetchCategories();
     _fetchProducts();
   }
 
+  @override
+  void dispose() {
+    mainTabIndex.removeListener(_onProductsTabVisible);
+    super.dispose();
+  }
+
   Future<void> _fetchDelete() async {
     final prefs = await SharedPreferences.getInstance();
-    _canDelete = prefs.getBool('enableDelete') ?? false;
+    if (!mounted) return;
+    setState(() {
+      _canDelete = prefs.getBool('enableDelete') ?? false;
+    });
   }
 
   Future<void> _fetchCategories() async {
-    final cats = await _dbHelper.getCategories();
+    final cats = await _dbHelper.getVisibleCategories();
+    if (!mounted) return;
     setState(() {
       _categories = cats.reversed.toList();
+      if (_selectedCategoryId != null &&
+          !_categories.any((c) => c.id == _selectedCategoryId)) {
+        _selectedCategoryId = null;
+      }
     });
   }
 
   Future<void> _fetchProducts() async {
-    final products = await _dbHelper.getProducts();
+    final products = await _dbHelper.getProductsInVisibleCategories();
     setState(() {
       _products = products;
     });
@@ -50,12 +72,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _refreshProducts() async {
     await _fetchDelete();
+    await _fetchCategories();
     await _fetchProducts();
   }
 
   Future<void> _deleteProduct(int id) async {
     await _dbHelper.deleteProduct(id);
-    _fetchProducts();
+    await _fetchProducts();
   }
 
   Future<void> _toggleProductVisible(Product product) async {
@@ -63,6 +86,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
       product.copyWith(isVisible: !product.isVisible),
     );
     _fetchProducts();
+  }
+
+  String? _categoryImagePath(int? categoryId) {
+    if (categoryId == null) return null;
+    for (final c in _categories) {
+      if (c.id == categoryId) return c.imagePath;
+    }
+    return null;
   }
 
   @override
@@ -127,7 +158,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       : GridView.builder(
                           padding: EdgeInsets.fromLTRB(
                             horizontalScreenPadding(context),
-                            12,
+                            8,
                             horizontalScreenPadding(context),
                             rootTabBodyBottomScrollPadding(context),
                           ),
@@ -172,9 +203,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _wrapDismissible(Product product, Widget child) {
-    if (_canDelete != true) return child;
+    if (!_canDelete) return child;
     return Dismissible(
-      key: Key(product.id.toString()),
+      key: ValueKey('prod_${product.id}'),
       direction: DismissDirection.endToStart,
       background: Container(
         margin: EdgeInsets.zero,
@@ -191,7 +222,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog(
+        return await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
@@ -217,10 +248,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ],
             );
           },
-        );
+        ) ??
+            false;
       },
-      onDismissed: (direction) {
-        _deleteProduct(product.id!);
+      onDismissed: (direction) async {
+        try {
+          await _deleteProduct(product.id!);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Delete failed: $e')),
+            );
+            await _fetchProducts();
+          }
+        }
       },
       child: child,
     );
@@ -311,7 +352,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         return Transform.scale(
           scale: 0.8 + (0.2 * value),
           child: Opacity(
-            opacity: value * (product.isVisible ? 1 : 0.55),
+            opacity: value * (product.isVisible ? 1.0 : 0.55),
             child: Card(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -341,6 +382,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               borderRadius: BorderRadius.circular(12),
                               child: LocalOrAssetImage(
                                 path: product.imagePath,
+                                fallbackPath: _categoryImagePath(product.categoryId),
                                 entity: LocalImageEntity.product,
                                 fit: BoxFit.cover,
                               ),

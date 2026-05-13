@@ -9,6 +9,8 @@ enum LocalImageEntity { category, product }
 
 class LocalOrAssetImage extends StatelessWidget {
   final String? path;
+  /// For products: category photo when [path] is missing or invalid (e.g. no product image).
+  final String? fallbackPath;
   final LocalImageEntity entity;
   final BoxFit fit;
   final double? width;
@@ -17,6 +19,7 @@ class LocalOrAssetImage extends StatelessWidget {
   const LocalOrAssetImage({
     super.key,
     required this.path,
+    this.fallbackPath,
     this.entity = LocalImageEntity.product,
     this.fit = BoxFit.cover,
     this.width,
@@ -41,25 +44,31 @@ class LocalOrAssetImage extends StatelessWidget {
     return s.clamp(20.0, 56.0);
   }
 
+  String? _firstLoadablePath() {
+    for (final candidate in [path, fallbackPath]) {
+      if (candidate == null || candidate.isEmpty) continue;
+      final file = File(candidate);
+      if (file.existsSync()) return candidate;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final p = path;
-    if (p != null && p.isNotEmpty) {
-      final file = File(p);
-      if (file.existsSync()) {
-        return Image.file(
-          file,
-          fit: fit,
+    final resolved = _firstLoadablePath();
+    if (resolved != null) {
+      return Image.file(
+        File(resolved),
+        fit: fit,
+        width: width,
+        height: height,
+        errorBuilder: (context, error, stackTrace) => _IconFallback(
+          icon: _fallbackIcon,
+          iconSize: _fallbackIconSize(),
           width: width,
           height: height,
-          errorBuilder: (context, error, stackTrace) => _IconFallback(
-            icon: _fallbackIcon,
-            iconSize: _fallbackIconSize(),
-            width: width,
-            height: height,
-          ),
-        );
-      }
+        ),
+      );
     }
     return _IconFallback(
       icon: _fallbackIcon,
