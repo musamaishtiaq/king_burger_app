@@ -1,9 +1,9 @@
+import 'dart:io';
+
+import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:esc_pos_utils/esc_pos_utils.dart';
-import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:usb_serial/usb_serial.dart';
 
 import '../models/order.dart';
 import '../models/orderItem.dart';
@@ -170,8 +170,41 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     return _products.firstWhere((item) => item.id == productId);
   }
 
+  /// Occurrences of a component product in the deal template (per one deal ordered).
+  int _dealTemplateCount(List<int>? productList, int componentProductId) {
+    if (productList == null || productList.isEmpty) return 0;
+    return productList.where((id) => id == componentProductId).length;
+  }
+
+  /// Per underlying product: non-deals add line quantity; deals expand to components
+  /// (line qty × template counts), so standalone items and deal contents combine correctly.
+  Map<int, int> _kitchenCountsByProductId(List<OrderItem> items) {
+    final counts = <int, int>{};
+    void addCount(int productId, int delta) {
+      if (delta <= 0) return;
+      counts[productId] = (counts[productId] ?? 0) + delta;
+    }
+
+    for (final item in items) {
+      final product = _getProductById(item.productId);
+      final q = item.quantity;
+      final list = product.productList;
+
+      if (product.isDeal && list != null && list.isNotEmpty) {
+        for (final componentId in list.toSet()) {
+          final perDealUnit = _dealTemplateCount(list, componentId);
+          addCount(componentId, q * perDealUnit);
+        }
+      } else {
+        addCount(product.id!, q);
+      }
+    }
+    return counts;
+  }
+
   void _saveOrder() async {
     if (_formKey.currentState!.validate() && _orderItems.isNotEmpty) {
+      await _fetchPrintingChecks();
       final newOrder = Order(
         orderNumber: _orderNumber,
         customerDetails: _customerDetails,
@@ -189,12 +222,28 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       }
 
       if (_customerSlipEnabled!) {
-        final bytes = await buildCustomerOrderSlip(newOrder, _orderItems);
-        await printSlip(bytes);
+        try {
+          final bytes = await _buildOrderSlip(newOrder, _orderItems, forCustomer: true);
+          await printSlip(bytes);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Customer print failed: $e')),
+            );
+          }
+        }
       }
       if (_internalSlipEnabled!) {
-        // final bytes = await buildCustomerOrderSlip(newOrder, _orderItems);
-        // await printSlip(bytes);
+        try {
+          final bytes = await _buildOrderSlip(newOrder, _orderItems, forCustomer: false);
+          await printSlip(bytes);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Kitchen print failed: $e')),
+            );
+          }
+        }
       }
 
       widget.onSave();
@@ -638,22 +687,36 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     );
   }
 
-  Future<List<int>> buildCustomerOrderSlip(
-      Order order, List<OrderItem> items) async {
+  Future<List<int>> _buildOrderSlip(
+    Order order,
+    List<OrderItem> items, {
+    required bool forCustomer,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm58, profile);
     List<int> bytes = [];
     final shopName = prefs.getString('storeName') ?? "My Store";
+    final grandTotal = items.fold<double>(0.0, (sum, item) => sum + item.price);
+
+    final showDetails =
+        forCustomer ? _custOrderDetails! : _intOrderDetails!;
+    final showItemsFull =
+        forCustomer ? _custOrderItemsFull! : _intOrderItemsFull!;
+    final showItemsCount =
+        forCustomer ? _custOrderItemsCount! : _intOrderItemsCount!;
+    final showPayment = forCustomer ? _custPayment! : _intPayment!;
 
     // ===== Order Details =====
-    if (_custOrderDetails!) {
+    if (showDetails) {
       bytes += generator.text(shopName,
           styles: const PosStyles(
               align: PosAlign.center, bold: true, height: PosTextSize.size2));
       bytes += generator.text('Order #: ${order.orderNumber}');
       bytes += generator.text('Date: ${order.dateTime}');
-      bytes += generator.text('Order Slip: For Customer');
+      bytes += generator.text(
+        forCustomer ? 'Order Slip: For Customer' : 'Order Slip: For Kitchen',
+      );
       if (order.isCashOnDelivery) {
         bytes += generator.text('Customer: ${order.customerDetails}');
         bytes += generator.text('Order Type: Home Delivery');
@@ -662,14 +725,11 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     }
 
     // ===== Item List  =====
-    double grandTotal = 0;
-    if (_custOrderItemsFull!) {
+    if (showItemsFull) {
       for (var item in items) {
         final name = _getProductById(item.productId).name;
         final qty = item.quantity;
-        final price = item.price;
-        final lineTotal = qty * price;
-        grandTotal += lineTotal;
+        final lineTotal = item.price;
 
         bytes += generator.row([
           PosColumn(text: '$qty x $name', width: 8),
@@ -682,27 +742,22 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       bytes += generator.hr();
     }
 
-    // ===== Item Count =====
-    if (_custOrderItemsCount!) {
-      for (var item in items) {
-        final name = item.productId;
-        final qty = item.quantity;
-        final price = item.price;
-        final lineTotal = qty * price;
-
-        bytes += generator.row([
-          PosColumn(text: '$qty x $name', width: 8),
-          PosColumn(
-              text: lineTotal.toStringAsFixed(0),
-              width: 4,
-              styles: const PosStyles(align: PosAlign.right)),
-        ]);
+    // ===== Item count (kitchen: by component product, deals expanded) =====
+    if (showItemsCount) {
+      final kitchen = _kitchenCountsByProductId(items);
+      final sortedIds = kitchen.keys.toList()
+        ..sort((a, b) =>
+            _getProductById(a).name.toLowerCase().compareTo(_getProductById(b).name.toLowerCase()));
+      for (final id in sortedIds) {
+        final qty = kitchen[id]!;
+        final name = _getProductById(id).name;
+        bytes += generator.text('$qty x $name');
       }
       bytes += generator.hr();
     }
 
     // ===== Payment =====
-    if (_custPayment!) {
+    if (showPayment) {
       bytes += generator.row([
         PosColumn(text: 'TOTAL', width: 8, styles: const PosStyles(bold: true)),
         PosColumn(
@@ -710,23 +765,34 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             width: 4,
             styles: const PosStyles(align: PosAlign.right, bold: true)),
       ]);
-      bytes += generator.text('Thank you for ordering!',
-          styles: const PosStyles(align: PosAlign.center));
+      if (forCustomer) {
+        bytes += generator.text('Thank you for ordering!',
+            styles: const PosStyles(align: PosAlign.center));
+      }
     }
 
     bytes += generator.cut();
     return bytes;
   }
 
+  /// Sends raw ESC/POS bytes to the printer over TCP (port 9100).
   Future<void> printSlip(List<int> bytes) async {
-    final devices = await UsbSerial.listDevices();
-    final printer =
-        devices.firstWhere((d) => d.productName!.contains('TM-T90'));
-
-    UsbPort? port = await printer.create();
-    await port!.open();
-    await port.setDTR(true);
-    await port.write(Uint8List.fromList(bytes));
-    await port.close();
+    final prefs = await SharedPreferences.getInstance();
+    final host = (prefs.getString('printerIp') ?? '192.168.0.100').trim();
+    if (host.isEmpty) {
+      throw const FormatException('Printer IP is not set');
+    }
+    const rawPort = 9100;
+    final socket = await Socket.connect(
+      host,
+      rawPort,
+      timeout: const Duration(seconds: 12),
+    );
+    try {
+      socket.add(bytes);
+      await socket.flush();
+    } finally {
+      await socket.close();
+    }
   }
 }

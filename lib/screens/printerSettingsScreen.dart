@@ -14,10 +14,24 @@ class PrinterSettingsScreen extends StatefulWidget {
   _PrinterSettingsScreenState createState() => _PrinterSettingsScreenState();
 }
 
+const String _defaultPrinterIp = '192.168.0.100';
+
+bool _isValidIpv4(String s) {
+  final parts = s.trim().split('.');
+  if (parts.length != 4) return false;
+  for (final p in parts) {
+    if (p.isEmpty) return false;
+    final n = int.tryParse(p);
+    if (n == null || n < 0 || n > 255) return false;
+  }
+  return true;
+}
+
 class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late bool _isLoading;
   String _storeName = "My Store";
+  String _printerIp = _defaultPrinterIp;
   String _selectedHour = '09';
   String _selectedMinute = '00';
   String _selectedAmPm = 'AM';
@@ -53,6 +67,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
 
     _storeName = prefs.getString('storeName') ?? "My Store";
+    _printerIp = prefs.getString('printerIp') ?? _defaultPrinterIp;
     String savedTime =
         prefs.getString('timeLimit') ??
         '$_selectedHour:$_selectedMinute $_selectedAmPm';
@@ -73,6 +88,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   Future<void> _setSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('storeName', _storeName);
+    await prefs.setString('printerIp', _printerIp.trim());
     await prefs.setString(
       'timeLimit',
       '$_selectedHour:$_selectedMinute $_selectedAmPm',
@@ -92,6 +108,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
 
     _storeName = "My Store";
+    _printerIp = _defaultPrinterIp;
     _selectedHour = '09';
     _selectedMinute = '00';
     _selectedAmPm = 'AM';
@@ -151,12 +168,12 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             // Store Information Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -172,7 +189,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     TextFormField(
                       initialValue: _storeName,
                       decoration: const InputDecoration(
@@ -187,15 +204,37 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      initialValue: _printerIp,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Printer IP',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      onChanged: (val) => _printerIp = val,
+                      validator: (val) {
+                        final t = val?.trim() ?? '';
+                        if (t.isEmpty) {
+                          return 'Please enter printer IP';
+                        }
+                        if (!_isValidIpv4(t)) {
+                          return 'Please enter a valid IP address';
+                        }
+                        return null;
+                      },
+                    ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             // App Settings Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -211,7 +250,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Enable Delete Functionality'),
@@ -221,7 +260,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         setState(() => _enableDelete = val);
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
@@ -251,11 +290,11 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             // Time Settings Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -271,7 +310,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
@@ -318,7 +357,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             // Action Buttons
             Row(
               children: [
@@ -355,7 +394,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
           ],
         ),
       ),

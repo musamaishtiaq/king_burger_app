@@ -130,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         children: [
           SwitchListTile(
-            contentPadding: const EdgeInsets.all(16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             title: Row(
               children: [
                 Icon(
@@ -174,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required ValueChanged<bool> onChanged,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       title: Text(
         title,
         style: Theme.of(context)
@@ -203,12 +203,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             // Header Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -223,16 +223,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
-                      'Configure what information to include on customer and internal receipts',
+                      'Configure what information to include on customer and kitchen receipts',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             // Customer Slip Section
             _buildSlipSection(
               title: 'Customer Receipt',
@@ -268,12 +268,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Internal Slip Section
+            const SizedBox(height: 6),
+            // Kitchen receipt section
             _buildSlipSection(
-              title: 'Internal Receipt',
-              subtitle: 'Settings for internal kitchen/management receipts',
-              icon: Icons.receipt_long,
+              title: 'Kitchen Receipt',
+              subtitle: 'Settings for kitchen / prep-line tickets',
+              icon: Icons.restaurant_menu,
               enabled: _internalSlipEnabled,
               onEnableChanged: (val) =>
                   setState(() => _internalSlipEnabled = val),
@@ -304,7 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             // Action Buttons
             Row(
               children: [
@@ -341,7 +341,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
           ],
         ),
       ),

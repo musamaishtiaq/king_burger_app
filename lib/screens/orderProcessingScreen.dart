@@ -116,6 +116,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
       ),
       body: _showOrderList ? _buildOrderList() : _buildItemList(),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_order_processing',
         onPressed: () {
           _fetchOrders();
         },

@@ -136,6 +136,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_category_list',
         onPressed: () {
           Navigator.push(
             context,

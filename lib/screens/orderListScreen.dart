@@ -153,6 +153,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_order_list',
         onPressed: () {
           Navigator.push(
             context,

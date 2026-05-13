@@ -149,6 +149,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_product_list',
         onPressed: () {
           Navigator.push(
             context,
