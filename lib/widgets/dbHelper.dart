@@ -34,7 +34,7 @@ class DbHelper {
     String path = join(await getDatabasesPath(), 'fast_food.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -45,6 +45,17 @@ class DbHelper {
       await db.execute('ALTER TABLE categories ADD COLUMN imagePath TEXT');
       await db.execute('ALTER TABLE products ADD COLUMN imagePath TEXT');
     }
+    if (oldVersion < 3) {
+      // order_items.price was line total; now unit price (quantity * price = subtotal).
+      await db.rawUpdate(
+          'UPDATE order_items SET price = price / quantity WHERE quantity > 0');
+    }
+    if (oldVersion < 4) {
+      await db.execute(
+          'ALTER TABLE categories ADD COLUMN isVisible INTEGER NOT NULL DEFAULT 1');
+      await db.execute(
+          'ALTER TABLE products ADD COLUMN isVisible INTEGER NOT NULL DEFAULT 1');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -52,7 +63,8 @@ class DbHelper {
       CREATE TABLE categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
-        imagePath TEXT
+        imagePath TEXT,
+        isVisible INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -66,6 +78,7 @@ class DbHelper {
         isDeal INTEGER,
         productList TEXT,
         imagePath TEXT,
+        isVisible INTEGER NOT NULL DEFAULT 1,
         FOREIGN KEY(categoryId) REFERENCES categories(id)
       )
     ''');
@@ -171,14 +184,37 @@ class DbHelper {
     return await db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<List<Category>> getVisibleCategories() async {
+    final db = await database;
+    final result = await db.query(
+      'categories',
+      where: 'isVisible = ?',
+      whereArgs: [1],
+    );
+    return result.isNotEmpty
+        ? result.map((p) => Category.fromMap(p)).toList()
+        : [];
+  }
+
+  Future<List<Product>> getVisibleCatalogProducts() async {
+    final db = await database;
+    final maps = await db.rawQuery('''
+      SELECT p.* FROM products p
+      INNER JOIN categories c ON c.id = p.categoryId
+      WHERE p.isVisible = 1 AND c.isVisible = 1
+      ORDER BY p.id DESC
+    ''');
+    return maps.map((m) => Product.fromMap(m)).toList();
+  }
+
   Future<List<Product>> getNonDealProducts() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'products',
-      where: 'isDeal = ?',
-      whereArgs: [0],
-      orderBy: 'id DESC',
-    );
+    final maps = await db.rawQuery('''
+      SELECT p.* FROM products p
+      INNER JOIN categories c ON c.id = p.categoryId
+      WHERE p.isDeal = 0 AND p.isVisible = 1 AND c.isVisible = 1
+      ORDER BY p.id DESC
+    ''');
     return maps.map((m) => Product.fromMap(m)).toList();
   }
 
@@ -272,12 +308,13 @@ class DbHelper {
         DateFormat('yyyy-MM-dd HH:mm:ss').format(start); // 2025-09-22T00:00:00
     final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
 
+    // Revenue uses unit price stored on each order line (not current product.price).
     return await db.rawQuery('''
     SELECT 
       p.id AS productId,
       p.name AS productName,
       SUM(oi.quantity) AS totalQty,
-      SUM(oi.quantity * p.price) AS totalPrice
+      SUM(oi.quantity * oi.price) AS totalPrice
     FROM order_items oi
     JOIN products p ON p.id = oi.productId
     JOIN orders o ON o.id = oi.orderId
@@ -409,6 +446,7 @@ class DbHelper {
           'id': cat['id'],
           'name': cat['name'],
           'imagePath': cat['imagePath'],
+          'isVisible': cat['isVisible'] ?? 1,
           'products': products
               .map((p) => {
                     'id': p['id'],
@@ -418,6 +456,7 @@ class DbHelper {
                     'isDeal': p['isDeal'],
                     'productList': p['productList'] ?? '[]',
                     'imagePath': p['imagePath'],
+                    'isVisible': p['isVisible'] ?? 1,
                   })
               .toList()
         };
@@ -457,6 +496,7 @@ class DbHelper {
             'id': catMap['id'],
             'name': catMap['name'],
             'imagePath': catMap['imagePath'],
+            'isVisible': catMap['isVisible'] ?? 1,
           },
           conflictAlgorithm: ConflictAlgorithm.replace);
 
@@ -473,6 +513,7 @@ class DbHelper {
               'isDeal': (p['isDeal'] == true || p['isDeal'] == 1) ? 1 : 0,
               'productList': p['productList'],
               'imagePath': p['imagePath'],
+              'isVisible': p['isVisible'] ?? 1,
             },
             conflictAlgorithm: ConflictAlgorithm.replace);
       }

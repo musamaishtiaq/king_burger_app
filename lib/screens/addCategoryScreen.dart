@@ -72,6 +72,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
           id: widget.category!.id,
           name: _name,
           imagePath: imagePath,
+          isVisible: widget.category!.isVisible,
         );
         await _dbHelper.updateCategory(category);
       }

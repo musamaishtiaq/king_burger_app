@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../models/category.dart';
 import '../models/product.dart';
 import '../utils/app_colors.dart';
+import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
 import '../widgets/dbHelper.dart';
 
@@ -86,7 +89,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _fetchDealCategories() async {
-    final cats = await _dbHelper.getCategories();
+    final cats = await _dbHelper.getVisibleCategories();
     final categoryIdsWithProducts =
         _allNonDealProducts.map((p) => p.categoryId).toSet();
     final filteredCats =
@@ -143,6 +146,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           isDeal: _isDeal,
           productList: _isDeal ? _selectedProductsId : null,
           imagePath: null,
+          isVisible: true,
         ),
       );
       if (_pickedImagePath != null) {
@@ -161,6 +165,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             isDeal: _isDeal,
             productList: _isDeal ? _selectedProductsId : null,
             imagePath: stored,
+            isVisible: true,
           ),
         );
       }
@@ -185,6 +190,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           isDeal: _isDeal,
           productList: _isDeal ? _selectedProductsId : null,
           imagePath: imgPath,
+          isVisible: widget.product!.isVisible,
         ),
       );
     }
@@ -337,211 +343,194 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.local_offer,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Deal Configuration',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                          ],
+                        Icon(Icons.local_offer, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Deal package',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 40,
+                        Text(
+                          '${_selectedProductsId.length} items · Rs. ${totalPrice.toStringAsFixed(0)}',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: math.min(
+                    520.0,
+                    MediaQuery.sizeOf(context).height * 0.52,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F7F7),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE8E8E8)),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 68,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             itemCount: _dealChipCategories.length,
-                            itemBuilder: (ctx, index) {
+                            itemBuilder: (context, index) {
                               final cat = _dealChipCategories[index];
-                              final isSelected =
-                                  cat.id == _selectedDealCategoryId;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(cat.name),
-                                  selected: isSelected,
-                                  onSelected: (_) {
-                                    setState(() {
-                                      _selectedDealCategoryId = cat.id;
-                                      _filterDealProducts();
-                                    });
-                                  },
-                                  selectedColor:
-                                      AppColors.primary.withValues(alpha: 0.15),
-                                  backgroundColor: const Color(0xFFF0F0F0),
-                                  side:
-                                      const BorderSide(color: Colors.transparent),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  labelStyle: TextStyle(
-                                    color: isSelected
-                                        ? AppColors.primary
-                                        : AppColors.textPrimary,
-                                    fontWeight: FontWeight.w600,
+                              return _buildDealCategoryChip(
+                                label: cat.name,
+                                imagePath: cat.imagePath,
+                                selected: _selectedDealCategoryId == cat.id,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedDealCategoryId = cat.id;
+                                    _filterDealProducts();
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                        const Divider(height: 1, thickness: 0.5),
+                        Expanded(
+                          child: GridView.builder(
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount:
+                                  catalogGridCrossAxisCount(context),
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              childAspectRatio:
+                                  orderItemsGridChildAspectRatio(context),
+                            ),
+                            itemCount: _filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = _filteredProducts[index];
+                              final count = _selectedProductsId
+                                  .where((id) => id == product.id)
+                                  .length;
+                              return Card(
+                                margin: EdgeInsets.zero,
+                                clipBehavior: Clip.antiAlias,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: LocalOrAssetImage(
+                                            path: product.imagePath,
+                                            entity: LocalImageEntity.product,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        product.name,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                      ),
+                                      Text(
+                                        'Rs. ${product.price.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF0F0F0),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.remove_circle_outline,
+                                              ),
+                                              onPressed: count > 0
+                                                  ? () {
+                                                      setState(() {
+                                                        _selectedProductsId
+                                                            .remove(
+                                                                product.id);
+                                                        _updateTotal(
+                                                          product.price,
+                                                          false,
+                                                        );
+                                                      });
+                                                    }
+                                                  : null,
+                                              color: count > 0
+                                                  ? AppColors.error
+                                                  : AppColors.disabled,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            Text(
+                                              '$count',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.add_circle_outline,
+                                              ),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedProductsId
+                                                      .add(product.id!);
+                                                  _updateTotal(
+                                                    product.price,
+                                                    true,
+                                                  );
+                                                });
+                                              },
+                                              color: AppColors.primary,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               );
                             },
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Deal Total:',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              Text(
-                                '${_selectedProductsId.length} items - Rs. ${totalPrice.toStringAsFixed(0)}',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.primary,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.inventory,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Select Items for Deal',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                          ],
-                        ),
-                      ),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.4, // Fixed height for scrolling
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            itemCount: _filteredProducts.length,
-                            itemBuilder: (ctx, index) {
-                            final product = _filteredProducts[index];
-                            final count = _selectedProductsId
-                                .where((id) => id == product.id)
-                                .length;
-
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 2),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                title: Text(
-                                  product.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.w800),
-                                ),
-                                subtitle: Text(
-                                  'Rs. ${product.price.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                trailing: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF0F0F0),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.remove_circle_outline,
-                                        ),
-                                        onPressed: count > 0
-                                            ? () {
-                                                setState(() {
-                                                  _selectedProductsId.remove(
-                                                    product.id,
-                                                  );
-                                                  _updateTotal(
-                                                    product.price,
-                                                    false,
-                                                  );
-                                                });
-                                              }
-                                            : null,
-                                        color: count > 0
-                                            ? AppColors.error
-                                            : AppColors.disabled,
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 2,
-                                        ),
-                                        child: Text(
-                                          '$count',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.add_circle_outline,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _selectedProductsId.add(
-                                              product.id!,
-                                            );
-                                            _updateTotal(product.price, true);
-                                          });
-                                        },
-                                        color: AppColors.primary,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ],
@@ -562,6 +551,44 @@ class _AddProductScreenState extends State<AddProductScreen> {
               const SizedBox(height: 8),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDealCategoryChip({
+    required String label,
+    required String? imagePath,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        avatar: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: LocalOrAssetImage(
+              path: imagePath,
+              entity: LocalImageEntity.category,
+              fit: BoxFit.cover,
+              width: 28,
+              height: 28,
+            ),
+          ),
+        ),
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => onTap(),
+        selectedColor: AppColors.primary.withValues(alpha: 0.15),
+        backgroundColor: const Color(0xFFF0F0F0),
+        side: const BorderSide(color: Colors.transparent),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        labelStyle: TextStyle(
+          color: selected ? AppColors.primary : AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

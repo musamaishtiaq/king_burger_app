@@ -3,6 +3,7 @@ class OrderItem {
   int orderId;
   int productId;
   int quantity;
+  /// Unit price at order time (line subtotal is [quantity] * [price]).
   double price;
 
   OrderItem({

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as im;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,6 +14,9 @@ import '../widgets/dbHelper.dart';
 import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
+
+/// Fixed 80mm (~3") thermal paper; slip column layout assumes this width.
+const PaperSize kReceiptPaperSize = PaperSize.mm80;
 
 class AddOrderScreen extends StatefulWidget {
   final Function onSave;
@@ -61,17 +65,25 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   void initState() {
     super.initState();
     _fetchPrintingChecks();
-    _fetchCategories();
-    _fetchProducts();
     if (widget.order != null) {
       _orderNumber = widget.order!.orderNumber;
       _dateTime = widget.order!.dateTime;
       _customerDetails = widget.order!.customerDetails;
       _isCashOnDelivery = widget.order!.isCashOnDelivery;
-      _fetchOrderItems(widget.order!.id!);
+      _bootstrapEditOrder();
     } else {
       _dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(_currentDateTime);
+      _bootstrapNewOrder();
     }
+  }
+
+  Future<void> _bootstrapNewOrder() async {
+    await Future.wait([_fetchCategories(), _fetchProducts()]);
+  }
+
+  Future<void> _bootstrapEditOrder() async {
+    await _fetchOrderItems(widget.order!.id!);
+    await Future.wait([_fetchCategories(), _fetchProducts()]);
   }
 
   Future<void> _fetchPrintingChecks() async {
@@ -93,7 +105,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     if (widget.order == null) {
       _orderNumber = await _dbHelper.getNextOrderNo();
     }
-    final cats = await _dbHelper.getCategories();
+    final cats = await _dbHelper.getVisibleCategories();
     setState(() => _categories = [
       Category(id: -1, name: 'Selected'),
       ...cats.reversed.toList()
@@ -101,8 +113,21 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   }
 
   Future<void> _fetchProducts() async {
-    final products = await _dbHelper.getProducts();
-    setState(() => _products = products);
+    final visible = await _dbHelper.getVisibleCatalogProducts();
+    if (widget.order == null) {
+      setState(() => _products = visible);
+      return;
+    }
+    final idsInOrder = _orderItems.map((e) => e.productId).toSet();
+    final visibleIds = visible.map((p) => p.id!).toSet();
+    final missing = idsInOrder.difference(visibleIds);
+    final merged = List<Product>.from(visible);
+    for (final id in missing) {
+      final p = await _dbHelper.getProduct(id);
+      if (p != null) merged.add(p);
+    }
+    merged.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+    setState(() => _products = merged);
   }
 
   Future<void> _fetchOrderItems(int orderId) async {
@@ -110,7 +135,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     double price = 0;
     int cnt = 0;
     for (var e in items) {
-      price += e.price;
+      price += e.price * e.quantity;
       cnt += e.quantity;
     }
     setState(() {
@@ -140,7 +165,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       ));
     } else {
       existing.quantity++;
-      existing.price += product.price;
     }
 
     _totalPrice += product.price;
@@ -156,7 +180,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
     if (existing.quantity > 0) {
       existing.quantity--;
-      existing.price -= product.price;
       if (existing.quantity == 0) {
         _orderItems.remove(existing);
       }
@@ -526,7 +549,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       trailing: Text(
-                        'Rs. ${item.price.toStringAsFixed(0)}',
+                        'Rs. ${(item.quantity * item.price).toStringAsFixed(0)}',
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     );
@@ -687,6 +710,12 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     );
   }
 
+  String _slipShortName(String name, int maxLen) {
+    final t = name.trim();
+    if (t.length <= maxLen) return t;
+    return t.substring(0, maxLen);
+  }
+
   Future<List<int>> _buildOrderSlip(
     Order order,
     List<OrderItem> items, {
@@ -694,10 +723,11 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final profile = await CapabilityProfile.load();
-    final generator = Generator(PaperSize.mm58, profile);
+    final generator = Generator(kReceiptPaperSize, profile);
     List<int> bytes = [];
     final shopName = prefs.getString('storeName') ?? "My Store";
-    final grandTotal = items.fold<double>(0.0, (sum, item) => sum + item.price);
+    final grandTotal = items.fold<double>(
+        0.0, (sum, item) => sum + item.quantity * item.price);
 
     final showDetails =
         forCustomer ? _custOrderDetails! : _intOrderDetails!;
@@ -706,36 +736,88 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     final showItemsCount =
         forCustomer ? _custOrderItemsCount! : _intOrderItemsCount!;
     final showPayment = forCustomer ? _custPayment! : _intPayment!;
+    const center = PosStyles(align: PosAlign.center);
 
     // ===== Order Details =====
     if (showDetails) {
       bytes += generator.text(shopName,
           styles: const PosStyles(
               align: PosAlign.center, bold: true, height: PosTextSize.size2));
-      bytes += generator.text('Order #: ${order.orderNumber}');
-      bytes += generator.text('Date: ${order.dateTime}');
+      final logoPath = prefs.getString('receiptLogoPath')?.trim() ?? '';
+      if (logoPath.isNotEmpty) {
+        final logoFile = File(logoPath);
+        if (await logoFile.exists()) {
+          try {
+            final raw = await logoFile.readAsBytes();
+            final decoded = im.decodeImage(raw);
+            if (decoded != null) {
+              const maxLogoWidth = 384;
+              final img = decoded.width > maxLogoWidth
+                  ? im.copyResize(decoded, width: maxLogoWidth)
+                  : decoded;
+              bytes += generator.image(img, align: PosAlign.center);
+              bytes += generator.feed(1);
+            }
+          } catch (_) {
+            // Invalid or unreadable logo file — continue without image.
+          }
+        }
+      }
+      bytes += generator.text('Order #: ${order.orderNumber}',
+          styles: center);
+      bytes += generator.text('Date: ${order.dateTime}', styles: center);
       bytes += generator.text(
         forCustomer ? 'Order Slip: For Customer' : 'Order Slip: For Kitchen',
+        styles: center,
       );
       if (order.isCashOnDelivery) {
-        bytes += generator.text('Customer: ${order.customerDetails}');
-        bytes += generator.text('Order Type: Home Delivery');
+        bytes += generator.text('Customer: ${order.customerDetails}',
+            styles: center);
+        bytes += generator.text('Order Type: Home Delivery', styles: center);
       }
       bytes += generator.hr();
     }
 
     // ===== Item List  =====
     if (showItemsFull) {
+      bytes += generator.row([
+        PosColumn(
+            text: 'Item',
+            width: 4,
+            styles: const PosStyles(bold: true)),
+        PosColumn(
+            text: 'Qty',
+            width: 2,
+            styles: const PosStyles(bold: true, align: PosAlign.right)),
+        PosColumn(
+            text: 'Price',
+            width: 3,
+            styles: const PosStyles(bold: true, align: PosAlign.right)),
+        PosColumn(
+            text: 'Total',
+            width: 3,
+            styles: const PosStyles(bold: true, align: PosAlign.right)),
+      ]);
+      bytes += generator.hr(ch: '-');
       for (var item in items) {
         final name = _getProductById(item.productId).name;
         final qty = item.quantity;
-        final lineTotal = item.price;
+        final unit = item.price;
+        final lineTotal = qty * unit;
 
         bytes += generator.row([
-          PosColumn(text: '$qty x $name', width: 8),
+          PosColumn(text: _slipShortName(name, 8), width: 4),
+          PosColumn(
+              text: '$qty',
+              width: 2,
+              styles: const PosStyles(align: PosAlign.right)),
+          PosColumn(
+              text: unit.toStringAsFixed(0),
+              width: 3,
+              styles: const PosStyles(align: PosAlign.right)),
           PosColumn(
               text: lineTotal.toStringAsFixed(0),
-              width: 4,
+              width: 3,
               styles: const PosStyles(align: PosAlign.right)),
         ]);
       }

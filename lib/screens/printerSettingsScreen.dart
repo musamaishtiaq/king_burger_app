@@ -1,13 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../screens/salesReportScreen.dart';
-import '../widgets/dropdownField.dart';
-import '../screens/settingsScreen.dart';
-import '../screens/backupScreen.dart';
 import '../utils/app_colors.dart';
+import '../widgets/dropdownField.dart';
 
 class PrinterSettingsScreen extends StatefulWidget {
   @override
@@ -15,13 +16,14 @@ class PrinterSettingsScreen extends StatefulWidget {
 }
 
 const String _defaultPrinterIp = '192.168.0.100';
+const String _prefReceiptLogoPath = 'receiptLogoPath';
 
 bool _isValidIpv4(String s) {
   final parts = s.trim().split('.');
   if (parts.length != 4) return false;
-  for (final p in parts) {
-    if (p.isEmpty) return false;
-    final n = int.tryParse(p);
+  for (final part in parts) {
+    if (part.isEmpty) return false;
+    final n = int.tryParse(part);
     if (n == null || n < 0 || n > 255) return false;
   }
   return true;
@@ -31,6 +33,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late bool _isLoading;
   String _storeName = "My Store";
+  String? _receiptLogoPath;
   String _printerIp = _defaultPrinterIp;
   String _selectedHour = '09';
   String _selectedMinute = '00';
@@ -80,6 +83,18 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     _appLetter = prefs.getString('appLetter') ?? 'A';
     _orderNoMaxLength = prefs.getInt('orderNoMaxLength') ?? 4;
 
+    final logoPath = prefs.getString(_prefReceiptLogoPath)?.trim();
+    if (logoPath != null && logoPath.isNotEmpty) {
+      if (await File(logoPath).exists()) {
+        _receiptLogoPath = logoPath;
+      } else {
+        await prefs.remove(_prefReceiptLogoPath);
+        _receiptLogoPath = null;
+      }
+    } else {
+      _receiptLogoPath = null;
+    }
+
     Timer(const Duration(milliseconds: 300), () {
       setState(() => _isLoading = false);
     });
@@ -97,6 +112,49 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     await prefs.setBool('enableDelete', _enableDelete);
     await prefs.setString('appLetter', _appLetter);
     await prefs.setInt('orderNoMaxLength', _orderNoMaxLength);
+
+    final logo = _receiptLogoPath?.trim();
+    if (logo == null || logo.isEmpty) {
+      await prefs.remove(_prefReceiptLogoPath);
+    } else {
+      await prefs.setString(_prefReceiptLogoPath, logo);
+    }
+  }
+
+  Future<void> _pickReceiptLogo() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.single.path;
+    if (path == null) return;
+    final src = File(path);
+    if (!await src.exists()) return;
+
+    final root = await getApplicationDocumentsDirectory();
+    final ext = p.extension(path).toLowerCase();
+    const allowed = {'.png', '.jpg', '.jpeg', '.gif', '.webp'};
+    final safeExt = allowed.contains(ext) ? ext : '.png';
+    final destPath = p.join(root.path, 'receipt_logo$safeExt');
+    await src.copy(destPath);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefReceiptLogoPath, destPath);
+
+    if (mounted) {
+      setState(() => _receiptLogoPath = destPath);
+    }
+  }
+
+  Future<void> _clearReceiptLogo() async {
+    final path = _receiptLogoPath?.trim();
+    if (path != null && path.isNotEmpty) {
+      try {
+        final f = File(path);
+        if (await f.exists()) await f.delete();
+      } catch (_) {}
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefReceiptLogoPath);
+    if (mounted) setState(() => _receiptLogoPath = null);
   }
 
   Future<void> _saveSettings() async {
@@ -105,7 +163,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   }
 
   Future<void> _resetSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    await _clearReceiptLogo();
 
     _storeName = "My Store";
     _printerIp = _defaultPrinterIp;
@@ -118,9 +176,11 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     _orderNoMaxLength = 4;
 
     await _setSettings();
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
     _showDialog('Settings reset to default successfully!');
   }
 
@@ -129,7 +189,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           content: Text(message),
           actions: [
             TextButton(
@@ -161,6 +222,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       );
     }
 
+    final hasLogo =
+        _receiptLogoPath != null && _receiptLogoPath!.trim().isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Printer Settings'),
@@ -170,7 +234,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
-            // Store Information Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -183,9 +246,12 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Store Information',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                       ],
                     ),
@@ -194,7 +260,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                       initialValue: _storeName,
                       decoration: const InputDecoration(
                         labelText: 'Store Name',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       onChanged: (val) => _storeName = val,
                       validator: (val) {
@@ -204,6 +271,61 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Receipt logo',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Optional. Prints centered below the store name on thermal slips (80mm).',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: hasLogo
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                File(_receiptLogoPath!),
+                                height: 96,
+                                fit: BoxFit.contain,
+                              ),
+                            )
+                          : Container(
+                              height: 72,
+                              width: double.infinity,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F0F0),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'No logo selected',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _pickReceiptLogo,
+                          icon: const Icon(Icons.add_photo_alternate_outlined),
+                          label: const Text('Choose logo'),
+                        ),
+                        if (hasLogo)
+                          OutlinedButton.icon(
+                            onPressed: _clearReceiptLogo,
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('Remove'),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     TextFormField(
                       initialValue: _printerIp,
@@ -212,7 +334,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                       ),
                       decoration: const InputDecoration(
                         labelText: 'Printer IP',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       onChanged: (val) => _printerIp = val,
                       validator: (val) {
@@ -231,7 +354,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            // App Settings Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -244,9 +366,12 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'App Settings',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                       ],
                     ),
@@ -254,7 +379,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Enable Delete Functionality'),
-                      subtitle: const Text('Allow deletion of orders, products, and categories'),
+                      subtitle: const Text(
+                        'Allow deletion of orders, products, and categories',
+                      ),
                       value: _enableDelete,
                       onChanged: (val) {
                         setState(() => _enableDelete = val);
@@ -280,7 +407,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                             value: _orderNoMaxLength.toString(),
                             items: _orderLengthOptions,
                             onChanged: (val) {
-                              setState(() => _orderNoMaxLength = int.parse(val!));
+                              setState(
+                                  () => _orderNoMaxLength = int.parse(val!));
                             },
                           ),
                         ),
@@ -291,7 +419,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            // Time Settings Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -304,9 +431,12 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Shift Time Settings',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                       ],
                     ),
@@ -358,7 +488,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            // Action Buttons
             Row(
               children: [
                 Expanded(

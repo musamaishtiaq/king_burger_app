@@ -84,7 +84,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               Text(
-                                'Price: Rs. ${orderItem.price.toStringAsFixed(0)}',
+                                'Unit: Rs. ${orderItem.price.toStringAsFixed(0)}',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],

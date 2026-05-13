@@ -47,6 +47,13 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     _fetchCategories();
   }
 
+  Future<void> _toggleCategoryVisible(Category category) async {
+    await _dbHelper.updateCategory(
+      category.copyWith(isVisible: !category.isVisible),
+    );
+    _fetchCategories();
+  }
+
   @override
   Widget build(BuildContext context) {
     final filteredCategories = _categories.toList();
@@ -152,46 +159,70 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   }
 
   Widget _buildCategoryTile(Category category) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            width: 64,
-            height: 64,
-            child: LocalOrAssetImage(
-              path: category.imagePath,
-              entity: LocalImageEntity.category,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        title: Text(
-          category.name,
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: AppColors.textSecondary,
-        ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddCategoryScreen(
-                category: category,
-                onSave: _fetchCategories,
+    return Opacity(
+      opacity: category.isVisible ? 1 : 0.55,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 64,
+              height: 64,
+              child: LocalOrAssetImage(
+                path: category.imagePath,
+                entity: LocalImageEntity.category,
+                fit: BoxFit.cover,
               ),
             ),
-          );
-        },
+          ),
+          title: Text(
+            category.name,
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          subtitle: category.isVisible
+              ? null
+              : Text(
+                  'Hidden from order catalog',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: category.isVisible ? 'Hide from catalog' : 'Show in catalog',
+                onPressed: () => _toggleCategoryVisible(category),
+                icon: Icon(
+                  category.isVisible ? Icons.visibility : Icons.visibility_off,
+                  color: category.isVisible
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddCategoryScreen(
+                  category: category,
+                  onSave: _fetchCategories,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

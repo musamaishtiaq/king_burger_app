@@ -58,6 +58,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _fetchProducts();
   }
 
+  Future<void> _toggleProductVisible(Product product) async {
+    await _dbHelper.updateProduct(
+      product.copyWith(isVisible: !product.isVisible),
+    );
+    _fetchProducts();
+  }
+
   @override
   Widget build(BuildContext context) {
     var filtered = _products.toList();
@@ -304,7 +311,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         return Transform.scale(
           scale: 0.8 + (0.2 * value),
           child: Opacity(
-            opacity: value,
+            opacity: value * (product.isVisible ? 1 : 0.55),
             child: Card(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -327,13 +334,47 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: LocalOrAssetImage(
-                            path: product.imagePath,
-                            entity: LocalImageEntity.product,
-                            fit: BoxFit.cover,
-                          ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: LocalOrAssetImage(
+                                path: product.imagePath,
+                                entity: LocalImageEntity.product,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 2,
+                              right: 2,
+                              child: Material(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                shape: const CircleBorder(),
+                                clipBehavior: Clip.antiAlias,
+                                child: IconButton(
+                                  tooltip: product.isVisible
+                                      ? 'Hide from catalog'
+                                      : 'Show in catalog',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 36,
+                                    minHeight: 36,
+                                  ),
+                                  iconSize: 20,
+                                  onPressed: () => _toggleProductVisible(product),
+                                  icon: Icon(
+                                    product.isVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: product.isVisible
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 6),
