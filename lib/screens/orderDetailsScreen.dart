@@ -35,8 +35,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     });
   }
 
-  Product _getProductById(int productId) {
-    return _products.firstWhere((item) => item.id == productId);
+  Product? _tryGetProduct(int productId) {
+    for (final p in _products) {
+      if (p.id == productId) return p;
+    }
+    return null;
+  }
+
+  String _orderItemTitle(OrderItem oi) {
+    final snap = oi.productName.trim();
+    if (snap.isNotEmpty) return snap;
+    return _tryGetProduct(oi.productId)?.name ?? '(removed item)';
   }
 
   @override
@@ -51,65 +60,55 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               itemCount: _orderItems.length,
               itemBuilder: (context, index) {
                 final orderItem = _orderItems[index];
-                return FutureBuilder<Product>(
-                  future: Future.value(_getProductById(orderItem.productId)),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.hasData) {
-                      final product = snapshot.data!;
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                            child: Icon(
-                              Icons.inventory,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          title: Text(
-                            product.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 2),
-                              Text(
-                                'Quantity: ${orderItem.quantity}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              Text(
-                                'Unit: Rs. ${orderItem.price.toStringAsFixed(0)}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                          trailing: Text(
-                            'Rs. ${(orderItem.quantity * orderItem.price).toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
-                              fontSize: 16,
-                            ),
-                          ),
+                final unitStr = orderItem.price.toStringAsFixed(0);
+                final subStr =
+                    (orderItem.quantity * orderItem.price).toStringAsFixed(0);
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          AppColors.primary.withValues(alpha: 0.12),
+                      child: Icon(
+                        Icons.inventory,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    title: Text(
+                      _orderItemTitle(orderItem),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 2),
+                        Text(
+                          'Quantity: ${orderItem.quantity}',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                      );
-                    } else {
-                      return const Card(
-                        margin: EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          contentPadding: EdgeInsets.all(16),
-                          leading: CircularProgressIndicator(),
-                          title: Text('Loading...'),
+                        Text(
+                          'Rs. $unitStr × ${orderItem.quantity}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                      );
-                    }
-                  },
+                      ],
+                    ),
+                    trailing: Text(
+                      'Rs. $subStr',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
                 );
               },
             )

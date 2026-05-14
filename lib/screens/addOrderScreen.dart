@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as im;
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/order.dart';
@@ -53,19 +52,6 @@ im.Image _normalizeSlipRasterWidth(im.Image src) {
   if (src.width == target) return src;
   final nh = math.max(1, (src.height * target / src.width).round());
   return im.copyResize(src, width: target, height: nh);
-}
-
-/// [Generator.text] with [PosAlign.center] does not center on many printers because
-/// `_text` defaults to absolute column 0; a 1+11 [row] applies true horizontal centering.
-List<int> _slipCenteredTextRow(
-  Generator generator,
-  String text, {
-  PosStyles styles = const PosStyles(align: PosAlign.center),
-}) {
-  return generator.row([
-    PosColumn(text: '', width: 1, styles: const PosStyles()),
-    PosColumn(text: text, width: 11, styles: styles),
-  ]);
 }
 
 class AddOrderScreen extends StatefulWidget {
@@ -121,7 +107,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       _isCashOnDelivery = widget.order!.isCashOnDelivery;
       _bootstrapEditOrder();
     } else {
-      _dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(_currentDateTime);
+      _dateTime = Order.formatStoredDateTime(_currentDateTime);
       _bootstrapNewOrder();
     }
   }
@@ -211,6 +197,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         productId: product.id!,
         quantity: 0,
         price: 0,
+        productName: '',
       ),
     );
 
@@ -221,10 +208,12 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           productId: product.id!,
           quantity: 1,
           price: product.price,
+          productName: product.name,
         ),
       );
     } else {
       existing.quantity++;
+      existing.productName = product.name;
     }
 
     _totalPrice += product.price;
@@ -235,7 +224,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   void _removeProduct(Product product) {
     final existing = _orderItems.firstWhere(
       (item) => item.productId == product.id,
-      orElse: () => OrderItem(orderId: 0, productId: 0, quantity: 0, price: 0),
+      orElse: () => OrderItem(
+        orderId: 0,
+        productId: 0,
+        quantity: 0,
+        price: 0,
+        productName: '',
+      ),
     );
 
     if (existing.quantity > 0) {
@@ -251,6 +246,25 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
   Product _getProductById(int productId) {
     return _products.firstWhere((item) => item.id == productId);
+  }
+
+  /// Snapshot name on the line, else current catalog, else placeholder.
+  String _displayNameForOrderItem(OrderItem item) {
+    final snap = item.productName.trim();
+    if (snap.isNotEmpty) return snap;
+    try {
+      return _getProductById(item.productId).name;
+    } catch (_) {
+      return '(removed item)';
+    }
+  }
+
+  String _kitchenProductName(int productId) {
+    try {
+      return _getProductById(productId).name;
+    } catch (_) {
+      return '(removed)';
+    }
   }
 
   /// Occurrences of a component product in the deal template (per one deal ordered).
@@ -291,10 +305,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     setState(() => _isSaving = true);
     try {
       await _fetchPrintingChecks();
+      final parsed = Order.parseStoredDateTime(_dateTime) ??
+          (widget.order != null
+              ? Order.parseStoredDateTime(widget.order!.dateTime)
+              : null) ??
+          DateTime.now();
+      final dateTimeStr = Order.formatStoredDateTime(parsed);
       final newOrder = Order(
         orderNumber: _orderNumber,
         customerDetails: _customerDetails,
-        dateTime: _dateTime,
+        dateTime: dateTimeStr,
+        dateTimeEpoch: parsed.millisecondsSinceEpoch,
         totalPrice: _totalPrice,
         isProcessed: true,
         isCashOnDelivery: _isCashOnDelivery,
@@ -515,6 +536,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                         productId: 0,
                         quantity: 0,
                         price: 0,
+                        productName: '',
                       ),
                     );
                     return Card(
@@ -629,24 +651,32 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     ),
                   ),
                   ..._orderItems.map((item) {
-                    final match = _products.where(
-                      (p) => p.id == item.productId,
-                    );
-                    final name = match.isEmpty
-                        ? '(removed item)'
-                        : match.first.name;
+                    final name = _displayNameForOrderItem(item);
+                    final unitStr = item.price.toStringAsFixed(0);
+                    final subStr =
+                        (item.quantity * item.price).toStringAsFixed(0);
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 2,
                       ),
                       title: Text(name),
-                      subtitle: Text(
-                        'Qty: ${item.quantity}',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Qty: ${item.quantity}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            'Rs. $unitStr × ${item.quantity}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
                       trailing: Text(
-                        'Rs. ${(item.quantity * item.price).toStringAsFixed(0)}',
+                        'Rs. $subStr',
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     );
@@ -872,28 +902,24 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           }
         }
       }
-      bytes += _slipCenteredTextRow(
-        generator,
+      bytes += generator.text(
         shopName,
         styles: const PosStyles(
-          align: PosAlign.center,
           bold: true,
           height: PosTextSize.size2,
         ),
       );
-      bytes += _slipCenteredTextRow(generator, 'Order #: ${order.orderNumber}');
-      bytes += _slipCenteredTextRow(generator, 'Date: ${order.dateTime}');
-      bytes += _slipCenteredTextRow(
-        generator,
+      bytes += generator.text('Order #: ${order.orderNumber}');
+      bytes += generator.text('Date: ${order.dateTime}');
+      if (order.customerDetails != "") {
+        bytes += generator.text('Customer: ${order.customerDetails}');
+      }
+      if (order.isCashOnDelivery) {
+        bytes += generator.text('Order Type: Home Delivery');
+      }
+      bytes += generator.text(
         forCustomer ? 'Order Slip: For Customer' : 'Order Slip: For Kitchen',
       );
-      if (order.isCashOnDelivery) {
-        bytes += _slipCenteredTextRow(
-          generator,
-          'Customer: ${order.customerDetails}',
-        );
-        bytes += _slipCenteredTextRow(generator, 'Order Type: Home Delivery');
-      }
       bytes += generator.hr();
     }
 
@@ -904,7 +930,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         final rows = <SlipItemRow>[
           for (final item in items)
             SlipItemRow(
-              name: _getProductById(item.productId).name,
+              name: _displayNameForOrderItem(item),
               quantity: item.quantity,
               unitPrice: item.price,
               lineTotal: item.quantity * item.price,
@@ -945,7 +971,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         ]);
         bytes += generator.hr(ch: '-');
         for (var item in items) {
-          final name = _getProductById(item.productId).name;
+          final name = _displayNameForOrderItem(item);
           final qty = item.quantity;
           final unit = item.price;
           final lineTotal = qty * unit;
@@ -977,18 +1003,23 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     if (showItemsCount) {
       final kitchen = _kitchenCountsByProductId(items);
       final sortedIds = kitchen.keys.toList()
-        ..sort(
-          (a, b) => _getProductById(
-            a,
-          ).name.toLowerCase().compareTo(_getProductById(b).name.toLowerCase()),
-        );
+        ..sort((a, b) {
+          try {
+            return _getProductById(a)
+                .name
+                .toLowerCase()
+                .compareTo(_getProductById(b).name.toLowerCase());
+          } catch (_) {
+            return a.compareTo(b);
+          }
+        });
       im.Image? countImage;
       try {
         final lines = <SlipCountLine>[
           for (final id in sortedIds)
             SlipCountLine(
               quantity: kitchen[id]!,
-              productName: _getProductById(id).name,
+              productName: _kitchenProductName(id),
             ),
         ];
         final raw = await rasterItemCountSection(lines: lines);
@@ -1004,7 +1035,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       } else {
         for (final id in sortedIds) {
           final qty = kitchen[id]!;
-          final name = _getProductById(id).name;
+          final name = _kitchenProductName(id);
           bytes += generator.text('$qty x $name');
         }
       }

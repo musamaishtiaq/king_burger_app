@@ -74,6 +74,16 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
     return _products.firstWhere((item) => item.id == productId);
   }
 
+  String _orderItemLineName(OrderItem item) {
+    final snap = item.productName.trim();
+    if (snap.isNotEmpty) return snap;
+    try {
+      return _getProductById(item.productId).name;
+    } catch (_) {
+      return '(removed item)';
+    }
+  }
+
   int _getItemQuantity(List<int>? productList, int productId) {
     return productList?.where((id) => id == productId).length ?? 0;
   }
@@ -279,7 +289,6 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                         ),
                         const SizedBox(height: 6),
                         ...orderItems.map((item) {
-                          final product = _getProductById(item.productId);
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 1),
                             child: Row(
@@ -289,7 +298,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                                   style: const TextStyle(fontWeight: FontWeight.w600),
                                 ),
                                 Expanded(
-                                  child: Text(product.name),
+                                  child: Text(_orderItemLineName(item)),
                                 ),
                               ],
                             ),

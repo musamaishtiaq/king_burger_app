@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,7 +33,7 @@ class DbHelper {
     String path = join(await getDatabasesPath(), 'fast_food.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -55,6 +54,44 @@ class DbHelper {
           'ALTER TABLE categories ADD COLUMN isVisible INTEGER NOT NULL DEFAULT 1');
       await db.execute(
           'ALTER TABLE products ADD COLUMN isVisible INTEGER NOT NULL DEFAULT 1');
+    }
+    if (oldVersion < 5) {
+      await db.execute(
+        "ALTER TABLE order_items ADD COLUMN productName TEXT NOT NULL DEFAULT ''",
+      );
+      await db.rawUpdate('''
+        UPDATE order_items
+        SET productName = (
+          SELECT COALESCE(p.name, '')
+          FROM products p
+          WHERE p.id = order_items.productId
+        )
+        WHERE EXISTS (
+          SELECT 1 FROM products p WHERE p.id = order_items.productId
+        )
+      ''');
+    }
+    if (oldVersion < 6) {
+      await db.execute(
+        'ALTER TABLE orders ADD COLUMN dateTimeEpoch INTEGER',
+      );
+      final rows = await db.query('orders', columns: ['id', 'dateTime']);
+      for (final row in rows) {
+        final id = row['id'] as int;
+        final s = row['dateTime'] as String?;
+        if (s == null || s.trim().isEmpty) continue;
+        final dt = Order.parseStoredDateTime(s);
+        if (dt == null) continue;
+        await db.update(
+          'orders',
+          {
+            'dateTimeEpoch': dt.millisecondsSinceEpoch,
+            'dateTime': Order.formatStoredDateTime(dt),
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
     }
   }
 
@@ -89,6 +126,7 @@ class DbHelper {
         orderNumber TEXT,
         customerDetails TEXT,
         dateTime TEXT,
+        dateTimeEpoch INTEGER,
         totalPrice REAL,
         isProcessed INTEGER,
         isCashOnDelivery INTEGER
@@ -102,6 +140,7 @@ class DbHelper {
         productId INTEGER,
         quantity INTEGER,
         price REAL,
+        productName TEXT NOT NULL DEFAULT '',
         FOREIGN KEY(orderId) REFERENCES orders(id),
         FOREIGN KEY(productId) REFERENCES products(id)
       )
@@ -281,11 +320,8 @@ class DbHelper {
 
     final result = await db.query(
       'orders',
-      where: 'dateTime >= ? AND dateTime < ?',
-      whereArgs: [
-        DateFormat('yyyy-MM-dd HH:mm:ss').format(start),
-        DateFormat('yyyy-MM-dd HH:mm:ss').format(end)
-      ],
+      where: 'dateTimeEpoch >= ? AND dateTimeEpoch < ?',
+      whereArgs: [start.millisecondsSinceEpoch, end.millisecondsSinceEpoch],
     );
 
     return result.isNotEmpty
@@ -303,11 +339,8 @@ class DbHelper {
     final orderNoMaxLength = prefs.getInt('orderNoMaxLength') ?? 4;
 
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as cnt FROM orders WHERE dateTime >= ? AND dateTime < ?',
-      [
-        DateFormat('yyyy-MM-dd HH:mm:ss').format(start),
-        DateFormat('yyyy-MM-dd HH:mm:ss').format(end)
-      ],
+      'SELECT COUNT(*) as cnt FROM orders WHERE dateTimeEpoch >= ? AND dateTimeEpoch < ?',
+      [start.millisecondsSinceEpoch, end.millisecondsSinceEpoch],
     );
 
     final count = Sqflite.firstIntValue(result) ?? 0;
@@ -342,14 +375,14 @@ class DbHelper {
   Future<int> countOrdersWithSameNumberInDedupWindow(String orderNumber) async {
     final range = await _orderNumberDedupWindow();
     final db = await database;
-    final startStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(range.start);
-    final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(range.end);
+    final startMs = range.start.millisecondsSinceEpoch;
+    final endMs = range.end.millisecondsSinceEpoch;
     final result = await db.rawQuery(
       '''
       SELECT COUNT(*) AS cnt FROM orders
-      WHERE orderNumber = ? AND dateTime >= ? AND dateTime < ?
+      WHERE orderNumber = ? AND dateTimeEpoch >= ? AND dateTimeEpoch < ?
       ''',
-      [orderNumber, startStr, endStr],
+      [orderNumber, startMs, endMs],
     );
     return Sqflite.firstIntValue(result) ?? 0;
   }
@@ -364,37 +397,51 @@ class DbHelper {
       DateTime start, DateTime end) async {
     final db = await database;
 
-    final startStr =
-        DateFormat('yyyy-MM-dd HH:mm:ss').format(start); // 2025-09-22T00:00:00
-    final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = end.millisecondsSinceEpoch;
 
-    // Revenue uses unit price stored on each order line (not current product.price).
+    // Label: latest order line's snapshot [productName] in range, then catalog, then placeholder.
+    // Revenue still sums all lines (unit price × qty on each row).
     return await db.rawQuery('''
     SELECT 
-      p.id AS productId,
-      p.name AS productName,
+      oi.productId AS productId,
+      COALESCE(
+        NULLIF(
+          (
+            SELECT TRIM(COALESCE(oi2.productName, ''))
+            FROM order_items oi2
+            INNER JOIN orders o2 ON o2.id = oi2.orderId
+            WHERE oi2.productId = oi.productId
+              AND o2.dateTimeEpoch BETWEEN ? AND ?
+            ORDER BY oi2.id DESC
+            LIMIT 1
+          ),
+          ''
+        ),
+        (SELECT p.name FROM products p WHERE p.id = oi.productId LIMIT 1),
+        '(removed)'
+      ) AS productName,
       SUM(oi.quantity) AS totalQty,
       SUM(oi.quantity * oi.price) AS totalPrice
     FROM order_items oi
-    JOIN products p ON p.id = oi.productId
-    JOIN orders o ON o.id = oi.orderId
-    WHERE o.dateTime BETWEEN ? AND ?
-    GROUP BY p.id, p.name
+    INNER JOIN orders o ON o.id = oi.orderId
+    WHERE o.dateTimeEpoch BETWEEN ? AND ?
+    GROUP BY oi.productId
     ORDER BY totalQty DESC
-  ''', [startStr, endStr]);
+  ''', [startMs, endMs, startMs, endMs]);
   }
 
   /// Orders whose [dateTime] falls in the same inclusive range as [getSalesReport].
   Future<List<Order>> getOrdersForSalesReport(
       DateTime start, DateTime end) async {
     final db = await database;
-    final startStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(start);
-    final endStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = end.millisecondsSinceEpoch;
     final result = await db.query(
       'orders',
-      where: 'dateTime BETWEEN ? AND ?',
-      whereArgs: [startStr, endStr],
-      orderBy: 'dateTime DESC',
+      where: 'dateTimeEpoch BETWEEN ? AND ?',
+      whereArgs: [startMs, endMs],
+      orderBy: 'dateTimeEpoch DESC',
     );
     return result.isNotEmpty
         ? result.map((m) => Order.fromMap(m)).toList()

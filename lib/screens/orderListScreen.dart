@@ -249,7 +249,6 @@ class _OrderListScreenState extends State<OrderListScreen> {
               margin: const EdgeInsets.only(bottom: 8),
               child: InkWell(
                 onTap: () {
-                  _orderItems.clear();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -373,8 +372,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ...orderItems.take(3).map((item) {
-                                final product = _tryGetProductById(item.productId);
-                                final label = product?.name ?? '(removed item)';
+                                final label = item.lineDisplayLabel(
+                                  _tryGetProductById(item.productId)?.name,
+                                );
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 1,
@@ -436,11 +436,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   String _formatDateTime(String dateTime) {
-    try {
-      final parsed = DateTime.parse(dateTime);
-      return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return dateTime;
-    }
+    final parsed = Order.parseStoredDateTime(dateTime);
+    if (parsed == null) return dateTime;
+    return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
   }
 }

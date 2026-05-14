@@ -570,12 +570,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   }
 
   String _formatOrderDateTime(String dateTime) {
-    try {
-      final parsed = DateTime.parse(dateTime);
-      return DateFormat('d/M/yyyy HH:mm').format(parsed);
-    } catch (_) {
-      return dateTime;
-    }
+    final parsed = Order.parseStoredDateTime(dateTime);
+    if (parsed == null) return dateTime;
+    return DateFormat('d/M/yyyy HH:mm').format(parsed);
   }
 
   Widget _buildDateSelector({
