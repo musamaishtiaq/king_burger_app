@@ -189,8 +189,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           content: Text(message),
           actions: [
             TextButton(
@@ -226,9 +227,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         _receiptLogoPath != null && _receiptLogoPath!.trim().isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Printer Settings'),
-      ),
+      appBar: AppBar(title: const Text('Printer Settings')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -246,12 +245,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Store Information',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
@@ -260,8 +255,10 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                       initialValue: _storeName,
                       decoration: const InputDecoration(
                         labelText: 'Store Name',
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                       onChanged: (val) => _storeName = val,
                       validator: (val) {
@@ -275,12 +272,12 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                     Text(
                       'Receipt logo',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Optional. Prints centered below the store name on thermal slips (80mm).',
+                      'Optional. Prints centered above the store name (~0.75" image) on 80mm slips.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 10),
@@ -334,8 +331,10 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                       ),
                       decoration: const InputDecoration(
                         labelText: 'Printer IP',
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                       onChanged: (val) => _printerIp = val,
                       validator: (val) {
@@ -366,12 +365,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'App Settings',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
@@ -408,7 +403,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                             items: _orderLengthOptions,
                             onChanged: (val) {
                               setState(
-                                  () => _orderNoMaxLength = int.parse(val!));
+                                () => _orderNoMaxLength = int.parse(val!),
+                              );
                             },
                           ),
                         ),
@@ -431,12 +427,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Shift Time Settings',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
@@ -14,9 +15,58 @@ import '../widgets/dbHelper.dart';
 import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
+import '../utils/receipt_section_raster.dart';
 
 /// Fixed 80mm (~3") thermal paper; slip column layout assumes this width.
 const PaperSize kReceiptPaperSize = PaperSize.mm80;
+
+/// Bitmap max side for receipt logo (~0.75" at 203 DPI, common on ESC/POS).
+const int kReceiptLogoMaxSidePx = 152;
+
+im.Image _resizeImageToReceiptLogoBox(im.Image src) {
+  if (src.width <= kReceiptLogoMaxSidePx &&
+      src.height <= kReceiptLogoMaxSidePx) {
+    return src;
+  }
+  final scale = math.min(
+    kReceiptLogoMaxSidePx / src.width,
+    kReceiptLogoMaxSidePx / src.height,
+  );
+  final nw = math.max(1, (src.width * scale).round());
+  final nh = math.max(1, (src.height * scale).round());
+  return im.copyResize(src, width: nw, height: nh);
+}
+
+/// Full slip-width canvas with the logo centered, so raster print is centered
+/// even when the printer ignores [PosAlign.center] for [Generator.image].
+im.Image _centerReceiptLogoOnSlipWidth(im.Image resizedLogo) {
+  final slipW = kReceiptPaperSize.width;
+  final canvas = im.Image(slipW, resizedLogo.height);
+  canvas.fill(0xFFFFFFFF);
+  im.copyInto(canvas, resizedLogo, center: true);
+  return canvas;
+}
+
+/// Match ESC/POS slip width when widget capture is off by a few pixels.
+im.Image _normalizeSlipRasterWidth(im.Image src) {
+  final target = kReceiptPaperSize.width;
+  if (src.width == target) return src;
+  final nh = math.max(1, (src.height * target / src.width).round());
+  return im.copyResize(src, width: target, height: nh);
+}
+
+/// [Generator.text] with [PosAlign.center] does not center on many printers because
+/// `_text` defaults to absolute column 0; a 1+11 [row] applies true horizontal centering.
+List<int> _slipCenteredTextRow(
+  Generator generator,
+  String text, {
+  PosStyles styles = const PosStyles(align: PosAlign.center),
+}) {
+  return generator.row([
+    PosColumn(text: '', width: 1, styles: const PosStyles()),
+    PosColumn(text: text, width: 11, styles: styles),
+  ]);
+}
 
 class AddOrderScreen extends StatefulWidget {
   final Function onSave;
@@ -105,10 +155,12 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       _orderNumber = await _dbHelper.getNextOrderNo();
     }
     final cats = await _dbHelper.getVisibleCategories();
-    setState(() => _categories = [
-      Category(id: -1, name: 'Selected'),
-      ...cats.reversed.toList()
-    ]);
+    setState(
+      () => _categories = [
+        Category(id: -1, name: 'Selected'),
+        ...cats.reversed.toList(),
+      ],
+    );
   }
 
   Future<void> _fetchProducts() async {
@@ -163,12 +215,14 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     );
 
     if (existing.quantity == 0) {
-      _orderItems.add(OrderItem(
-        orderId: widget.order?.id ?? 0,
-        productId: product.id!,
-        quantity: 1,
-        price: product.price,
-      ));
+      _orderItems.add(
+        OrderItem(
+          orderId: widget.order?.id ?? 0,
+          productId: product.id!,
+          quantity: 1,
+          price: product.price,
+        ),
+      );
     } else {
       existing.quantity++;
     }
@@ -247,8 +301,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       );
 
       if (widget.order == null) {
-        final allowed =
-            await _dbHelper.canInsertOrderWithNumber(_orderNumber);
+        final allowed = await _dbHelper.canInsertOrderWithNumber(_orderNumber);
         if (!allowed) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -269,7 +322,11 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
       if (_customerSlipEnabled!) {
         try {
-          final bytes = await _buildOrderSlip(newOrder, _orderItems, forCustomer: true);
+          final bytes = await _buildOrderSlip(
+            newOrder,
+            _orderItems,
+            forCustomer: true,
+          );
           await printSlip(bytes);
         } catch (e) {
           if (mounted) {
@@ -281,13 +338,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       }
       if (_internalSlipEnabled!) {
         try {
-          final bytes = await _buildOrderSlip(newOrder, _orderItems, forCustomer: false);
+          final bytes = await _buildOrderSlip(
+            newOrder,
+            _orderItems,
+            forCustomer: false,
+          );
           await printSlip(bytes);
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Kitchen print failed: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Kitchen print failed: $e')));
           }
         }
       }
@@ -305,9 +366,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       _filteredProducts = _products;
     } else if (_selectedCategoryId == -1) {
       final selectedIds = _orderItems.map((item) => item.productId).toSet();
-      _filteredProducts = _products.where((p) => selectedIds.contains(p.id)).toList();
+      _filteredProducts = _products
+          .where((p) => selectedIds.contains(p.id))
+          .toList();
     } else {
-      _filteredProducts = _products.where((p) => p.categoryId == _selectedCategoryId).toList();
+      _filteredProducts = _products
+          .where((p) => p.categoryId == _selectedCategoryId)
+          .toList();
     }
     return _filteredProducts;
   }
@@ -391,10 +456,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalScreenPadding(context),
-          ),
-          itemCount: _categories.length + 1,
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalScreenPadding(context),
+            ),
+            itemCount: _categories.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _buildCategoryChip(
@@ -465,8 +530,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                 borderRadius: BorderRadius.circular(10),
                                 child: LocalOrAssetImage(
                                   path: product.imagePath,
-                                  fallbackPath:
-                                      _categoryImagePath(product.categoryId),
+                                  fallbackPath: _categoryImagePath(
+                                    product.categoryId,
+                                  ),
                                   entity: LocalImageEntity.product,
                                   fit: BoxFit.cover,
                                 ),
@@ -477,12 +543,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                               product.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             Text(
                               'Rs. ${product.price.toStringAsFixed(0)}',
@@ -520,9 +582,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(
-                                      Icons.add_circle_outline,
-                                    ),
+                                    icon: const Icon(Icons.add_circle_outline),
                                     onPressed: () => _addProduct(product),
                                     color: AppColors.primary,
                                     visualDensity: VisualDensity.compact,
@@ -555,25 +615,31 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [
-                        const Icon(Icons.shopping_cart, color: AppColors.primary),
+                        const Icon(
+                          Icons.shopping_cart,
+                          color: AppColors.primary,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Order Items',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
                   ),
                   ..._orderItems.map((item) {
-                    final match =
-                        _products.where((p) => p.id == item.productId);
+                    final match = _products.where(
+                      (p) => p.id == item.productId,
+                    );
                     final name = match.isEmpty
                         ? '(removed item)'
                         : match.first.name;
                     return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 2,
+                      ),
                       title: Text(name),
                       subtitle: Text(
                         'Qty: ${item.quantity}',
@@ -597,12 +663,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total Items:', style: Theme.of(context).textTheme.bodyLarge),
+                        Text(
+                          'Total Items:',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
                         Text(
                           '$_count',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge
+                          style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
@@ -611,13 +678,18 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total Price:', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          'Total Price:',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
                         Text(
                           'Rs. ${_totalPrice.toStringAsFixed(0)}',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
                         ),
                       ],
                     ),
@@ -639,9 +711,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                       const SizedBox(width: 8),
                       Text(
                         'Order Details',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ],
                   ),
@@ -651,7 +722,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Order Number',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                     validator: (v) => v!.isEmpty ? 'Required' : null,
                   ),
@@ -661,7 +735,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Date Time',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                     validator: (v) => v!.isEmpty ? 'Required' : null,
                   ),
@@ -670,7 +747,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     initialValue: _customerDetails,
                     decoration: const InputDecoration(
                       labelText: 'Customer Details',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                     onChanged: (v) => _customerDetails = v,
                   ),
@@ -758,22 +838,21 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     List<int> bytes = [];
     final shopName = prefs.getString('storeName') ?? "My Store";
     final grandTotal = items.fold<double>(
-        0.0, (sum, item) => sum + item.quantity * item.price);
+      0.0,
+      (sum, item) => sum + item.quantity * item.price,
+    );
 
-    final showDetails =
-        forCustomer ? _custOrderDetails! : _intOrderDetails!;
-    final showItemsFull =
-        forCustomer ? _custOrderItemsFull! : _intOrderItemsFull!;
-    final showItemsCount =
-        forCustomer ? _custOrderItemsCount! : _intOrderItemsCount!;
+    final showDetails = forCustomer ? _custOrderDetails! : _intOrderDetails!;
+    final showItemsFull = forCustomer
+        ? _custOrderItemsFull!
+        : _intOrderItemsFull!;
+    final showItemsCount = forCustomer
+        ? _custOrderItemsCount!
+        : _intOrderItemsCount!;
     final showPayment = forCustomer ? _custPayment! : _intPayment!;
-    const center = PosStyles(align: PosAlign.center);
 
     // ===== Order Details =====
     if (showDetails) {
-      bytes += generator.text(shopName,
-          styles: const PosStyles(
-              align: PosAlign.center, bold: true, height: PosTextSize.size2));
       final logoPath = prefs.getString('receiptLogoPath')?.trim() ?? '';
       if (logoPath.isNotEmpty) {
         final logoFile = File(logoPath);
@@ -782,10 +861,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             final raw = await logoFile.readAsBytes();
             final decoded = im.decodeImage(raw);
             if (decoded != null) {
-              const maxLogoWidth = 384;
-              final img = decoded.width > maxLogoWidth
-                  ? im.copyResize(decoded, width: maxLogoWidth)
-                  : decoded;
+              final img = _centerReceiptLogoOnSlipWidth(
+                _resizeImageToReceiptLogoBox(decoded),
+              );
               bytes += generator.image(img, align: PosAlign.center);
               bytes += generator.feed(1);
             }
@@ -794,77 +872,141 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           }
         }
       }
-      bytes += generator.text('Order #: ${order.orderNumber}',
-          styles: center);
-      bytes += generator.text('Date: ${order.dateTime}', styles: center);
-      bytes += generator.text(
+      bytes += _slipCenteredTextRow(
+        generator,
+        shopName,
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+          height: PosTextSize.size2,
+        ),
+      );
+      bytes += _slipCenteredTextRow(generator, 'Order #: ${order.orderNumber}');
+      bytes += _slipCenteredTextRow(generator, 'Date: ${order.dateTime}');
+      bytes += _slipCenteredTextRow(
+        generator,
         forCustomer ? 'Order Slip: For Customer' : 'Order Slip: For Kitchen',
-        styles: center,
       );
       if (order.isCashOnDelivery) {
-        bytes += generator.text('Customer: ${order.customerDetails}',
-            styles: center);
-        bytes += generator.text('Order Type: Home Delivery', styles: center);
+        bytes += _slipCenteredTextRow(
+          generator,
+          'Customer: ${order.customerDetails}',
+        );
+        bytes += _slipCenteredTextRow(generator, 'Order Type: Home Delivery');
       }
       bytes += generator.hr();
     }
 
-    // ===== Item List  =====
+    // ===== Item List (raster: supports Urdu / Arabic product names) =====
     if (showItemsFull) {
-      bytes += generator.row([
-        PosColumn(
+      im.Image? itemListImage;
+      try {
+        final rows = <SlipItemRow>[
+          for (final item in items)
+            SlipItemRow(
+              name: _getProductById(item.productId).name,
+              quantity: item.quantity,
+              unitPrice: item.price,
+              lineTotal: item.quantity * item.price,
+            ),
+        ];
+        final raw = await rasterItemListSection(rows: rows);
+        if (raw != null) {
+          itemListImage = _normalizeSlipRasterWidth(raw);
+        }
+      } catch (_) {
+        itemListImage = null;
+      }
+      if (itemListImage != null) {
+        bytes += generator.image(itemListImage, align: PosAlign.center);
+        bytes += generator.feed(1);
+      } else {
+        bytes += generator.row([
+          PosColumn(
             text: 'Item',
             width: 4,
-            styles: const PosStyles(bold: true)),
-        PosColumn(
+            styles: const PosStyles(bold: true),
+          ),
+          PosColumn(
             text: 'Qty',
             width: 2,
-            styles: const PosStyles(bold: true, align: PosAlign.right)),
-        PosColumn(
+            styles: const PosStyles(bold: true, align: PosAlign.right),
+          ),
+          PosColumn(
             text: 'Price',
             width: 3,
-            styles: const PosStyles(bold: true, align: PosAlign.right)),
-        PosColumn(
+            styles: const PosStyles(bold: true, align: PosAlign.right),
+          ),
+          PosColumn(
             text: 'Total',
             width: 3,
-            styles: const PosStyles(bold: true, align: PosAlign.right)),
-      ]);
-      bytes += generator.hr(ch: '-');
-      for (var item in items) {
-        final name = _getProductById(item.productId).name;
-        final qty = item.quantity;
-        final unit = item.price;
-        final lineTotal = qty * unit;
+            styles: const PosStyles(bold: true, align: PosAlign.right),
+          ),
+        ]);
+        bytes += generator.hr(ch: '-');
+        for (var item in items) {
+          final name = _getProductById(item.productId).name;
+          final qty = item.quantity;
+          final unit = item.price;
+          final lineTotal = qty * unit;
 
-        bytes += generator.row([
-          PosColumn(text: _slipShortName(name, 8), width: 4),
-          PosColumn(
+          bytes += generator.row([
+            PosColumn(text: _slipShortName(name, 8), width: 4),
+            PosColumn(
               text: '$qty',
               width: 2,
-              styles: const PosStyles(align: PosAlign.right)),
-          PosColumn(
+              styles: const PosStyles(align: PosAlign.right),
+            ),
+            PosColumn(
               text: unit.toStringAsFixed(0),
               width: 3,
-              styles: const PosStyles(align: PosAlign.right)),
-          PosColumn(
+              styles: const PosStyles(align: PosAlign.right),
+            ),
+            PosColumn(
               text: lineTotal.toStringAsFixed(0),
               width: 3,
-              styles: const PosStyles(align: PosAlign.right)),
-        ]);
+              styles: const PosStyles(align: PosAlign.right),
+            ),
+          ]);
+        }
       }
       bytes += generator.hr();
     }
 
-    // ===== Item count (kitchen: by component product, deals expanded) =====
+    // ===== Item count (raster; kitchen: by component product, deals expanded) =====
     if (showItemsCount) {
       final kitchen = _kitchenCountsByProductId(items);
       final sortedIds = kitchen.keys.toList()
-        ..sort((a, b) =>
-            _getProductById(a).name.toLowerCase().compareTo(_getProductById(b).name.toLowerCase()));
-      for (final id in sortedIds) {
-        final qty = kitchen[id]!;
-        final name = _getProductById(id).name;
-        bytes += generator.text('$qty x $name');
+        ..sort(
+          (a, b) => _getProductById(
+            a,
+          ).name.toLowerCase().compareTo(_getProductById(b).name.toLowerCase()),
+        );
+      im.Image? countImage;
+      try {
+        final lines = <SlipCountLine>[
+          for (final id in sortedIds)
+            SlipCountLine(
+              quantity: kitchen[id]!,
+              productName: _getProductById(id).name,
+            ),
+        ];
+        final raw = await rasterItemCountSection(lines: lines);
+        if (raw != null) {
+          countImage = _normalizeSlipRasterWidth(raw);
+        }
+      } catch (_) {
+        countImage = null;
+      }
+      if (countImage != null) {
+        bytes += generator.image(countImage, align: PosAlign.center);
+        bytes += generator.feed(1);
+      } else {
+        for (final id in sortedIds) {
+          final qty = kitchen[id]!;
+          final name = _getProductById(id).name;
+          bytes += generator.text('$qty x $name');
+        }
       }
       bytes += generator.hr();
     }
@@ -874,13 +1016,16 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       bytes += generator.row([
         PosColumn(text: 'TOTAL', width: 8, styles: const PosStyles(bold: true)),
         PosColumn(
-            text: grandTotal.toStringAsFixed(0),
-            width: 4,
-            styles: const PosStyles(align: PosAlign.right, bold: true)),
+          text: grandTotal.toStringAsFixed(0),
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
       ]);
       if (forCustomer) {
-        bytes += generator.text('Thank you for ordering!',
-            styles: const PosStyles(align: PosAlign.center));
+        bytes += generator.text(
+          'Thank you for ordering!',
+          styles: const PosStyles(align: PosAlign.center),
+        );
       }
     }
 
