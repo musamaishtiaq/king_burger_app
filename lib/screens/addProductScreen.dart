@@ -8,6 +8,7 @@ import '../models/product.dart';
 import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
+import '../widgets/category_picker_tile.dart';
 import '../widgets/dbHelper.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -409,18 +410,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                     child: Column(
                       children: [
-                        Container(
-                          height: 68,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        SizedBox(
+                          height: categoryPickerListHeight,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             itemCount: _dealChipCategories.length,
                             itemBuilder: (context, index) {
                               final cat = _dealChipCategories[index];
-                              return _buildDealCategoryChip(
+                              final isSelectedChip = cat.id == -1;
+                              return CategoryPickerTile(
                                 label: cat.name,
                                 imagePath: cat.imagePath,
+                                useListIcon: isSelectedChip,
                                 selected: _selectedDealCategoryId == cat.id,
                                 onTap: () {
                                   setState(() {
@@ -589,41 +594,4 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  Widget _buildDealCategoryChip({
-    required String label,
-    required String? imagePath,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        avatar: ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: LocalOrAssetImage(
-              path: imagePath,
-              entity: LocalImageEntity.category,
-              fit: BoxFit.cover,
-              width: 28,
-              height: 28,
-            ),
-          ),
-        ),
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        selectedColor: AppColors.primary.withValues(alpha: 0.15),
-        backgroundColor: const Color(0xFFF0F0F0),
-        side: const BorderSide(color: Colors.transparent),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        labelStyle: TextStyle(
-          color: selected ? AppColors.primary : AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
 }

@@ -68,6 +68,16 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - assets/seed/catalog.json
+    - assets/seed/sides rbg.png
+    - assets/seed/drinks rbg.png
+    - assets/seed/sandwich rbg.png
+    - assets/seed/burger rbg.png
+    - assets/seed/shawarma rbg.png
+    - assets/seed/pizza rbg.png
+    - assets/seed/deals rbg.png
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
 

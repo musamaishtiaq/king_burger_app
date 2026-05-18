@@ -15,6 +15,7 @@ import '../utils/app_colors.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
 import '../utils/receipt_section_raster.dart';
+import '../widgets/category_picker_tile.dart';
 
 /// Fixed 80mm (~3") thermal paper; slip column layout assumes this width.
 const PaperSize kReceiptPaperSize = PaperSize.mm80;
@@ -472,34 +473,31 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   Widget _buildItemsTab(List<Product> filteredProducts) {
     return Column(
       children: [
-        Container(
-          height: 68,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+        SizedBox(
+          height: categoryPickerListHeight,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(
               horizontal: horizontalScreenPadding(context),
+              vertical: 8,
             ),
             itemCount: _categories.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
-                return _buildCategoryChip(
+                return CategoryPickerTile(
                   label: 'All',
                   imagePath: null,
+                  useListIcon: true,
                   selected: _selectedCategoryId == null,
-                  onTap: () {
-                    setState(() => _selectedCategoryId = null);
-                  },
+                  onTap: () => setState(() => _selectedCategoryId = null),
                 );
               }
               final cat = _categories[index - 1];
-              return _buildCategoryChip(
+              return CategoryPickerTile(
                 label: cat.name,
                 imagePath: cat.imagePath,
                 selected: _selectedCategoryId == cat.id,
-                onTap: () {
-                  setState(() => _selectedCategoryId = cat.id);
-                },
+                onTap: () => setState(() => _selectedCategoryId = cat.id),
               );
             },
           ),
@@ -809,44 +807,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ),
           const SizedBox(height: 8),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryChip({
-    required String label,
-    required String? imagePath,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        avatar: ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: LocalOrAssetImage(
-              path: imagePath,
-              entity: LocalImageEntity.category,
-              fit: BoxFit.cover,
-              width: 28,
-              height: 28,
-            ),
-          ),
-        ),
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        selectedColor: AppColors.primary.withValues(alpha: 0.15),
-        backgroundColor: const Color(0xFFF0F0F0),
-        side: const BorderSide(color: Colors.transparent),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        labelStyle: TextStyle(
-          color: selected ? AppColors.primary : AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

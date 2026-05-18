@@ -1,0 +1,464 @@
+{
+  "version": 2,
+  "categories": [
+    {
+      "key": "sides",
+      "name": "Sides",
+      "imageAsset": "assets/seed/sides rbg.png"
+    },
+    {
+      "key": "drinks",
+      "name": "Drinks",
+      "imageAsset": "assets/seed/drinks rbg.png"
+    },
+    {
+      "key": "sandwich",
+      "name": "Sandwich",
+      "imageAsset": "assets/seed/sandwich rbg.png"
+    },
+    {
+      "key": "burger",
+      "name": "Burger",
+      "imageAsset": "assets/seed/burger rbg.png"
+    },
+    {
+      "key": "shawarma",
+      "name": "Shawarma",
+      "imageAsset": "assets/seed/shawarma rbg.png"
+    },
+    {
+      "key": "pizza",
+      "name": "Pizza",
+      "imageAsset": "assets/seed/pizza rbg.png"
+    },
+    {
+      "key": "deals",
+      "name": "Deals",
+      "imageAsset": "assets/seed/deals rbg.png"
+    }
+  ],
+  "products": [
+    {
+      "name": "ایکسٹرا مایو",
+      "categoryKey": "sides",
+      "price": 30,
+      "isDeal": false
+    },
+    {
+      "key": "hot_wings_full",
+      "name": "فل سائز ہاٹ ونگ",
+      "categoryKey": "sides",
+      "price": 100,
+      "isDeal": false
+    },
+    {
+      "name": "فرائز (ہاف)",
+      "categoryKey": "sides",
+      "price": 100,
+      "isDeal": false
+    },
+    {
+      "name": "فرائز (فل)",
+      "categoryKey": "sides",
+      "price": 150,
+      "isDeal": false
+    },
+    {
+      "key": "loaded_fries",
+      "name": "Loaded Fries",
+      "categoryKey": "sides",
+      "price": 450,
+      "isDeal": false
+    },
+    {
+      "key": "drink_regular",
+      "name": "Regular Drink",
+      "categoryKey": "drinks",
+      "price": 80,
+      "isDeal": false
+    },
+    {
+      "key": "drink_half_l",
+      "name": "0.5 Ltr Drink",
+      "categoryKey": "drinks",
+      "price": 120,
+      "isDeal": false
+    },
+    {
+      "key": "drink_1_5l",
+      "name": "1.5 Ltr Drink",
+      "categoryKey": "drinks",
+      "price": 170,
+      "isDeal": false
+    },
+    {
+      "name": "کلب سینڈوچ",
+      "categoryKey": "sandwich",
+      "price": 300,
+      "isDeal": false
+    },
+    {
+      "name": "تکہ سینڈوچ",
+      "categoryKey": "sandwich",
+      "price": 350,
+      "isDeal": false
+    },
+    {
+      "key": "shami_burger",
+      "name": "شامی برگر",
+      "categoryKey": "burger",
+      "price": 150,
+      "isDeal": false
+    },
+    {
+      "name": "ڈبل انڈا شامی برگر",
+      "categoryKey": "burger",
+      "price": 200,
+      "isDeal": false
+    },
+    {
+      "name": "چکن پیٹی برگر",
+      "categoryKey": "burger",
+      "price": 200,
+      "isDeal": false
+    },
+    {
+      "name": "ڈبل انڈا چکن شامی برگر",
+      "categoryKey": "burger",
+      "price": 240,
+      "isDeal": false
+    },
+    {
+      "key": "chicken_burger",
+      "name": "چکن برگر",
+      "categoryKey": "burger",
+      "price": 250,
+      "isDeal": false
+    },
+    {
+      "key": "zinger_burger",
+      "name": "زنگر برگر",
+      "categoryKey": "burger",
+      "price": 280,
+      "isDeal": false
+    },
+    {
+      "key": "chicken_shawarma_reg",
+      "name": "چکن شوارما (ریگولر)",
+      "categoryKey": "shawarma",
+      "price": 150,
+      "isDeal": false
+    },
+    {
+      "name": "چکن شوارما (لارج)",
+      "categoryKey": "shawarma",
+      "price": 200,
+      "isDeal": false
+    },
+    {
+      "name": "زنگر شوارما (ریگولر)",
+      "categoryKey": "shawarma",
+      "price": 200,
+      "isDeal": false
+    },
+    {
+      "name": "زنگر شوارما (لارج)",
+      "categoryKey": "shawarma",
+      "price": 280,
+      "isDeal": false
+    },
+    {
+      "name": "پلیٹر شوارما",
+      "categoryKey": "shawarma",
+      "price": 600,
+      "isDeal": false
+    },
+    {
+      "key": "tikka_pizza_s",
+      "name": "Tikka Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 350,
+      "isDeal": false
+    },
+    {
+      "key": "tikka_pizza_m",
+      "name": "Tikka Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 650,
+      "isDeal": false
+    },
+    {
+      "key": "tikka_pizza_l",
+      "name": "Tikka Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 890,
+      "isDeal": false
+    },
+    {
+      "name": "Fajita Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 350,
+      "isDeal": false
+    },
+    {
+      "name": "Fajita Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 650,
+      "isDeal": false
+    },
+    {
+      "name": "Fajita Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 890,
+      "isDeal": false
+    },
+    {
+      "name": "Vegi Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 350,
+      "isDeal": false
+    },
+    {
+      "name": "Vegi Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 650,
+      "isDeal": false
+    },
+    {
+      "name": "Vegi Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 890,
+      "isDeal": false
+    },
+    {
+      "name": "Supreme Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 350,
+      "isDeal": false
+    },
+    {
+      "name": "Supreme Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 650,
+      "isDeal": false
+    },
+    {
+      "name": "Supreme Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 890,
+      "isDeal": false
+    },
+    {
+      "name": "BBQ Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 380,
+      "isDeal": false
+    },
+    {
+      "name": "BBQ Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 720,
+      "isDeal": false
+    },
+    {
+      "name": "BBQ Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 990,
+      "isDeal": false
+    },
+    {
+      "name": "Kabab Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 400,
+      "isDeal": false
+    },
+    {
+      "name": "Kabab Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 780,
+      "isDeal": false
+    },
+    {
+      "name": "Kabab Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 1090,
+      "isDeal": false
+    },
+    {
+      "name": "Malai Boti Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 450,
+      "isDeal": false
+    },
+    {
+      "name": "Malai Boti Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 820,
+      "isDeal": false
+    },
+    {
+      "name": "Malai Boti Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 1120,
+      "isDeal": false
+    },
+    {
+      "name": "Lazania Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 450,
+      "isDeal": false
+    },
+    {
+      "name": "Lazania Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 820,
+      "isDeal": false
+    },
+    {
+      "name": "Lazania Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 1120,
+      "isDeal": false
+    },
+    {
+      "name": "King Special Pizza (S)",
+      "categoryKey": "pizza",
+      "price": 450,
+      "isDeal": false
+    },
+    {
+      "name": "King Special Pizza (M)",
+      "categoryKey": "pizza",
+      "price": 820,
+      "isDeal": false
+    },
+    {
+      "key": "king_special_pizza_l",
+      "name": "King Special Pizza (L)",
+      "categoryKey": "pizza",
+      "price": 1120,
+      "isDeal": false
+    },
+    {
+      "name": "Deal 1",
+      "categoryKey": "deals",
+      "price": 650,
+      "isDeal": true,
+      "components": [
+        { "key": "tikka_pizza_s", "qty": 1 },
+        { "key": "zinger_burger", "qty": 1 },
+        { "key": "drink_regular", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 2",
+      "categoryKey": "deals",
+      "price": 950,
+      "isDeal": true,
+      "components": [
+        { "key": "zinger_burger", "qty": 3 },
+        { "key": "drink_1_5l", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 3",
+      "categoryKey": "deals",
+      "price": 1450,
+      "isDeal": true,
+      "components": [
+        { "key": "zinger_burger", "qty": 5 },
+        { "key": "drink_1_5l", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 4",
+      "categoryKey": "deals",
+      "price": 1990,
+      "isDeal": true,
+      "components": [{ "key": "king_special_pizza_l", "qty": 2 }]
+    },
+    {
+      "name": "Deal 5",
+      "categoryKey": "deals",
+      "price": 1490,
+      "isDeal": true,
+      "components": [
+        { "key": "tikka_pizza_l", "qty": 1 },
+        { "key": "zinger_burger", "qty": 2 },
+        { "key": "drink_1_5l", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 6",
+      "categoryKey": "deals",
+      "price": 990,
+      "isDeal": true,
+      "components": [
+        { "key": "tikka_pizza_m", "qty": 1 },
+        { "key": "chicken_shawarma_reg", "qty": 2 },
+        { "key": "drink_half_l", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 7",
+      "categoryKey": "deals",
+      "price": 490,
+      "isDeal": true,
+      "components": [
+        { "key": "chicken_burger", "qty": 2 },
+        { "key": "drink_regular", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 8",
+      "categoryKey": "deals",
+      "price": 990,
+      "isDeal": true,
+      "components": [
+        { "key": "shami_burger", "qty": 6 },
+        { "key": "drink_1_5l", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 9",
+      "categoryKey": "deals",
+      "price": 490,
+      "isDeal": true,
+      "components": [
+        { "key": "hot_wings_full", "qty": 5 },
+        { "key": "drink_regular", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 10",
+      "categoryKey": "deals",
+      "price": 499,
+      "isDeal": true,
+      "components": [
+        { "key": "loaded_fries", "qty": 1 },
+        { "key": "drink_half_l", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 11",
+      "categoryKey": "deals",
+      "price": 990,
+      "isDeal": true,
+      "components": [
+        { "key": "tikka_pizza_l", "qty": 1 },
+        { "key": "drink_1_5l", "qty": 1 }
+      ]
+    },
+    {
+      "name": "Deal 12",
+      "categoryKey": "deals",
+      "price": 2950,
+      "isDeal": true,
+      "components": [
+        { "key": "tikka_pizza_l", "qty": 2 },
+        { "key": "zinger_burger", "qty": 4 },
+        { "key": "drink_1_5l", "qty": 2 }
+      ]
+    }
+  ]
+}

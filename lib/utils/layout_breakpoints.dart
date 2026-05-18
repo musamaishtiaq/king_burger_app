@@ -113,3 +113,11 @@ double orderItemsGridChildAspectRatio(BuildContext context) {
 /// catalog grids use [catalogGridCrossAxisCount] instead.
 int productCrossAxisCount(BuildContext context) =>
     catalogGridCrossAxisCount(context);
+
+/// Category picker tile: left image, right label.
+const double categoryPickerImageSize = 56;
+
+const double categoryPickerTileHeight = 72;
+
+/// Outer height of the horizontal category [ListView] strip.
+const double categoryPickerListHeight = 88;

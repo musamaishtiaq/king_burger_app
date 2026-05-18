@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 
 import 'helper/strings.dart' as string;
 import 'screens/mainScreen.dart';
+import 'services/catalog_seed_service.dart';
 import 'utils/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await CatalogSeedService.instance.seedIfNeeded();
   runApp(MyApp());
 }
 
