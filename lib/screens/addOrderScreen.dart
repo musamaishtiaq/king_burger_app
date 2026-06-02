@@ -12,6 +12,7 @@ import '../models/product.dart';
 import '../models/category.dart';
 import '../widgets/dbHelper.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
 import '../utils/receipt_section_raster.dart';
@@ -421,7 +422,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                   8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFEFEF),
+                  color: context.extras.mutedFill,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Row(
@@ -459,7 +460,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             child: Text(
               text,
               style: TextStyle(
-                color: selected ? Colors.white : AppColors.textPrimary,
+                color: selected
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -576,7 +579,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                             const SizedBox(height: 4),
                             Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF0F0F0),
+                                color: context.extras.chipFill,
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Row(

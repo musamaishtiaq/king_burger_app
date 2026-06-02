@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
 import '../widgets/category_picker_tile.dart';
@@ -321,7 +322,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 12),
               TextFormField(
-                initialValue: _price.toString(),
+                initialValue: _price.toStringAsFixed(0),
                 decoration: const InputDecoration(
                   labelText: 'Price',
                   contentPadding: EdgeInsets.symmetric(
@@ -404,9 +405,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF7F7F7),
+                      color: context.extras.panelFill,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE8E8E8)),
+                      border: Border.all(
+                        color: context.colorScheme.outlineVariant,
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -501,7 +504,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                       const SizedBox(height: 4),
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFF0F0F0),
+                                          color: context.extras.chipFill,
                                           borderRadius:
                                               BorderRadius.circular(999),
                                         ),

@@ -8,7 +8,9 @@ import '../screens/settingsScreen.dart';
 import '../screens/printerSettingsScreen.dart';
 import '../screens/backupScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
+import '../utils/main_tab_index.dart';
 
 class SalesReportScreen extends StatefulWidget {
   @override
@@ -22,9 +24,49 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   List<Order> _ordersInRange = [];
   bool _isLoading = false;
   bool _reportLoaded = false;
+  bool _enableReporting = false;
   /// When false (default): show order list. When true: show aggregated product stats.
   bool _showItemLevelStats = false;
   final DbHelper _dbHelper = DbHelper();
+
+  static const int _reportingTabIndex = 3;
+
+  void _onReportingTabVisible() {
+    if (mainTabIndex.value == _reportingTabIndex && mounted) {
+      _refreshFromSettings();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    mainTabIndex.addListener(_onReportingTabVisible);
+    _refreshFromSettings();
+  }
+
+  @override
+  void dispose() {
+    mainTabIndex.removeListener(_onReportingTabVisible);
+    super.dispose();
+  }
+
+  Future<void> _refreshFromSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final enabled = prefs.getBool('enableReporting') ?? false;
+    final today = DateTime.now();
+    final dateOnly = DateTime(today.year, today.month, today.day);
+    setState(() {
+      _enableReporting = enabled;
+      _startDate = dateOnly;
+      _endDate = dateOnly;
+      _reportLoaded = false;
+      _itemReport = [];
+      _ordersInRange = [];
+      _isLoading = false;
+      _showItemLevelStats = false;
+    });
+  }
 
   Future<void> _pickDate({required bool isStart}) async {
     final picked = await showDatePicker(
@@ -121,7 +163,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         title: const Text('Sales Reports'),
         actions: [
           PopupMenuButton<String>(
-            onSelected: (value) {
+            onSelected: (value) async {
               switch (value) {
                 case 'settings':
                   Navigator.push(
@@ -130,10 +172,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                   );
                   break;
                 case 'printer':
-                  Navigator.push(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => PrinterSettingsScreen()),
                   );
+                  await _refreshFromSettings();
                   break;
                 case 'backup':
                   Navigator.push(
@@ -233,7 +276,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _generateReport,
+                          onPressed: (_isLoading || !_enableReporting)
+                              ? null
+                              : _generateReport,
                           icon: _isLoading
                               ? const SizedBox(
                                   width: 16,
@@ -275,7 +320,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                             fontWeight: FontWeight.w700,
                             color: !_showItemLevelStats
                                 ? AppColors.primary
-                                : AppColors.textPrimary,
+                                : context.colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -293,7 +338,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                             fontWeight: FontWeight.w700,
                             color: _showItemLevelStats
                                 ? AppColors.primary
-                                : AppColors.textPrimary,
+                                : context.colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -313,7 +358,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                         child: _buildSummaryCard(
                           title: 'Orders',
                           value: '${_ordersInRange.length}',
-                          color: AppColors.textPrimary,
+                          color: context.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -348,7 +393,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                         child: _buildSummaryCard(
                           title: 'Items Sold',
                           value: itemTotalQuantity.toString(),
-                          color: AppColors.textPrimary,
+                          color: context.colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -504,7 +549,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                 const SizedBox(height: 3),
                 LinearProgressIndicator(
                   value: percentage / 100,
-                  backgroundColor: const Color(0xFFEAEAEA),
+                  backgroundColor: context.extras.progressTrack,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     AppColors.primary,
                   ),
@@ -550,7 +595,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 56, color: AppColors.textSecondary),
+            Icon(icon, size: 56, color: context.colorScheme.onSurfaceVariant),
             const SizedBox(height: 12),
             Text(
               title,
@@ -585,7 +630,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFEFEF),
+          color: context.extras.mutedFill,
           border: Border.all(color: Colors.transparent),
           borderRadius: BorderRadius.circular(16),
         ),

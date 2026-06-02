@@ -4,9 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/order.dart';
 import '../models/orderItem.dart';
 import '../models/product.dart';
+import '../widgets/add_new_fab.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/addOrderScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/main_tab_index.dart';
 
@@ -178,7 +180,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: AddNewFab(
         heroTag: 'fab_order_list',
         onPressed: () {
           Navigator.push(
@@ -188,7 +190,6 @@ class _OrderListScreenState extends State<OrderListScreen> {
             ),
           );
         },
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -312,7 +313,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                             Icon(
                               Icons.person,
                               size: 16,
-                              color: AppColors.textSecondary,
+                              color: context.colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 4),
                             Expanded(
@@ -330,13 +331,15 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           Icon(
                             Icons.shopping_cart,
                             size: 16,
-                            color: AppColors.textSecondary,
+                            color: context.colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '$totalItems items',
                             style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.textSecondary),
+                                ?.copyWith(
+                                  color: context.colorScheme.onSurfaceVariant,
+                                ),
                           ),
                           const Spacer(),
                           if (order.isCashOnDelivery)
@@ -365,7 +368,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0F0F0),
+                            color: context.extras.chipFill,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
@@ -388,7 +391,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                             .bodySmall
                                             ?.copyWith(
                                               fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary,
+                                              color:
+                                                  context.colorScheme.onSurface,
                                             ),
                                       ),
                                       Expanded(
@@ -398,7 +402,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                               .textTheme
                                               .bodySmall
                                               ?.copyWith(
-                                                color: AppColors.textPrimary,
+                                                color:
+                                                  context.colorScheme.onSurface,
                                               ),
                                         ),
                                       ),
@@ -415,7 +420,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                     '+${orderItems.length - 3} more items',
                                     style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
-                                          color: AppColors.textSecondary,
+                                          color: context.colorScheme.onSurfaceVariant,
                                           fontStyle: FontStyle.italic,
                                         ),
                                   ),

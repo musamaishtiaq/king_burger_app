@@ -7,6 +7,7 @@ import '../models/product.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/orderDetailsScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 
 class OrderProcessingScreen extends StatefulWidget {
   @override
@@ -139,7 +140,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
           color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: context.extras.shadow,
               blurRadius: 16,
               offset: const Offset(0, -6),
             ),
@@ -157,9 +158,10 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _showOrderList
                       ? AppColors.primary
-                      : const Color(0xFFEFEFEF),
-                  foregroundColor:
-                      _showOrderList ? Colors.white : AppColors.textPrimary,
+                      : context.extras.mutedFill,
+                  foregroundColor: _showOrderList
+                      ? Colors.white
+                      : context.colorScheme.onSurface,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -179,9 +181,10 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: !_showOrderList
                       ? AppColors.primary
-                      : const Color(0xFFEFEFEF),
-                  foregroundColor:
-                      !_showOrderList ? Colors.white : AppColors.textPrimary,
+                      : context.extras.mutedFill,
+                  foregroundColor: !_showOrderList
+                      ? Colors.white
+                      : context.colorScheme.onSurface,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -211,12 +214,16 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                 background: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1B5E20).withValues(alpha: 0.12),
+                    color: context.extras.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Icon(Icons.done, color: Color(0xFF1B5E20), size: 24),
+                  child: Icon(
+                    Icons.done,
+                    color: context.extras.success,
+                    size: 24,
+                  ),
                 ),
                 confirmDismiss: (direction) async {
                   return await showDialog(
@@ -236,7 +243,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(true),
                             style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF1B5E20),
+                              foregroundColor: context.extras.success,
                             ),
                             child: const Text('Complete'),
                           ),
@@ -337,7 +344,9 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                                           final dealItem = _products.firstWhere((p) => p.id == id);
                                           return Text(
                                             '• ${_getItemQuantity(product.productList, id)}x ${dealItem.name}',
-                                            style: const TextStyle(color: AppColors.textPrimary),
+                                            style: TextStyle(
+                                              color: context.colorScheme.onSurface,
+                                            ),
                                           );
                                         }).toList() ?? [],
                                       ],

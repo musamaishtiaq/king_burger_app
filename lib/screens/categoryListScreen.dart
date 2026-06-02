@@ -4,9 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category.dart';
 import '../screens/addCategoryScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/main_tab_index.dart';
 import '../utils/local_image.dart';
+import '../widgets/add_new_fab.dart';
 import '../widgets/dbHelper.dart';
 
 class CategoryListScreen extends StatefulWidget {
@@ -169,7 +171,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: AddNewFab(
         heroTag: 'fab_category_list',
         onPressed: () {
           Navigator.push(
@@ -180,7 +182,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
             ),
           );
         },
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -228,13 +229,13 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                   category.isVisible ? Icons.visibility : Icons.visibility_off,
                   color: category.isVisible
                       ? AppColors.primary
-                      : AppColors.textSecondary,
+                      : context.colorScheme.onSurfaceVariant,
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: context.colorScheme.onSurfaceVariant,
               ),
             ],
           ),

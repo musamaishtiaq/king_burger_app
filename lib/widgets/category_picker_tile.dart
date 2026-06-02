@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
 
@@ -23,12 +24,15 @@ class CategoryPickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = context.colorScheme;
+    final extras = context.extras;
+
     return Padding(
       padding: const EdgeInsets.only(right: 10),
       child: Material(
         color: selected
             ? AppColors.primary.withValues(alpha: 0.12)
-            : const Color(0xFFF0F0F0),
+            : extras.chipFill,
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -39,7 +43,7 @@ class CategoryPickerTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: selected ? AppColors.primary : const Color(0xFFE0E0E0),
+                color: selected ? AppColors.primary : scheme.outlineVariant,
                 width: selected ? 2 : 1,
               ),
             ),
@@ -73,9 +77,7 @@ class CategoryPickerTile extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.textPrimary,
+                    color: selected ? AppColors.primary : scheme.onSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),

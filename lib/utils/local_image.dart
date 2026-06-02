@@ -94,10 +94,11 @@ class _IconFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final placeholder = AppColors.primary.withValues(alpha: 0.12);
     return Container(
       width: width,
       height: height,
-      color: AppColors.primary.withValues(alpha: 0.12),
+      color: placeholder,
       alignment: Alignment.center,
       child: Icon(
         icon,

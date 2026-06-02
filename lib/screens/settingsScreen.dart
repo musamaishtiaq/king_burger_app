@@ -8,6 +8,7 @@ import '../widgets/dropdownField.dart';
 import '../screens/printerSettingsScreen.dart';
 import '../screens/backupScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -137,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon,
                   color: enabled
                       ? AppColors.primary
-                      : AppColors.textSecondary,
+                      : context.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -333,8 +334,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: const Color(0xFFEFEFEF),
-                      foregroundColor: AppColors.textPrimary,
+                      backgroundColor: context.extras.mutedFill,
+                      foregroundColor: context.colorScheme.onSurface,
                     ),
                     child: const Text('Reset Settings'),
                   ),

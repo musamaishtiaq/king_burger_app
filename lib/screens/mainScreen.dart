@@ -5,6 +5,7 @@ import '../screens/productListScreen.dart';
 import '../screens/categoryListScreen.dart';
 import '../screens/salesReportScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/main_tab_index.dart';
 
@@ -58,10 +59,10 @@ class _MainScreenState extends State<MainScreen> {
                 fontWeight: FontWeight.w600,
               ),
               unselectedIconTheme: IconThemeData(
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               unselectedLabelTextStyle: TextStyle(
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
               indicatorColor: AppColors.primary.withValues(alpha: 0.12),
@@ -106,7 +107,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: context.extras.shadow,
               blurRadius: 16,
               offset: const Offset(0, -6),
             ),
@@ -122,7 +123,7 @@ class _MainScreenState extends State<MainScreen> {
             onTap: _onItemTapped,
             type: BottomNavigationBarType.fixed,
             selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textSecondary,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
             selectedLabelStyle: const TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 11,

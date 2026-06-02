@@ -3,9 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/category.dart';
 import '../models/product.dart';
+import '../widgets/add_new_fab.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/addProductScreen.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../widgets/category_picker_tile.dart';
 import '../utils/main_tab_index.dart';
@@ -186,7 +188,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: AddNewFab(
         heroTag: 'fab_product_list',
         onPressed: () {
           Navigator.push(
@@ -197,7 +199,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
           );
         },
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -352,7 +353,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               top: 2,
                               right: 2,
                               child: Material(
-                                color: Colors.white.withValues(alpha: 0.92),
+                                color: context.colorScheme.surface.withValues(
+                                  alpha: 0.92,
+                                ),
                                 shape: const CircleBorder(),
                                 clipBehavior: Clip.antiAlias,
                                 child: IconButton(
@@ -372,7 +375,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                         : Icons.visibility_off,
                                     color: product.isVisible
                                         ? AppColors.primary
-                                        : AppColors.textSecondary,
+                                        : context.colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ),

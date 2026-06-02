@@ -3,11 +3,14 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_colors.dart';
+import '../utils/app_theme_controller.dart';
+import '../utils/app_theme_extensions.dart';
 import '../widgets/dropdownField.dart';
 
 class PrinterSettingsScreen extends StatefulWidget {
@@ -17,6 +20,7 @@ class PrinterSettingsScreen extends StatefulWidget {
 
 const String _defaultPrinterIp = '192.168.0.100';
 const String _prefReceiptLogoPath = 'receiptLogoPath';
+const String _prefEnableReporting = 'enableReporting';
 
 bool _isValidIpv4(String s) {
   final parts = s.trim().split('.');
@@ -50,8 +54,11 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   final List<String> _amPm = ['AM', 'PM'];
 
   bool _enableDelete = false;
+  bool _enableReporting = false;
+  String _appThemeMode = AppThemeController.modeLight;
   String _appLetter = 'A';
   int _orderNoMaxLength = 4;
+  String _appVersion = '';
 
   final List<String> _letters = List.generate(
     26,
@@ -68,6 +75,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final packageInfo = await PackageInfo.fromPlatform();
+    _appVersion = packageInfo.version;
 
     _storeName = prefs.getString('storeName') ?? "My Store";
     _printerIp = prefs.getString('printerIp') ?? _defaultPrinterIp;
@@ -80,6 +89,13 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     _selectedAmPm = timeParts[2];
 
     _enableDelete = prefs.getBool('enableDelete') ?? false;
+    _enableReporting = prefs.getBool(_prefEnableReporting) ?? false;
+    _appThemeMode =
+        prefs.getString(AppThemeController.prefKey) ??
+        AppThemeController.modeLight;
+    if (_appThemeMode != AppThemeController.modeDark) {
+      _appThemeMode = AppThemeController.modeLight;
+    }
     _appLetter = prefs.getString('appLetter') ?? 'A';
     _orderNoMaxLength = prefs.getInt('orderNoMaxLength') ?? 4;
 
@@ -110,6 +126,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     );
 
     await prefs.setBool('enableDelete', _enableDelete);
+    await prefs.setBool(_prefEnableReporting, _enableReporting);
+    await prefs.setString(AppThemeController.prefKey, _appThemeMode);
     await prefs.setString('appLetter', _appLetter);
     await prefs.setInt('orderNoMaxLength', _orderNoMaxLength);
 
@@ -159,6 +177,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
   Future<void> _saveSettings() async {
     await _setSettings();
+    await AppThemeController.instance.setModeString(_appThemeMode);
     _showDialog('Settings saved successfully!');
   }
 
@@ -172,10 +191,13 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     _selectedAmPm = 'AM';
 
     _enableDelete = false;
+    _enableReporting = false;
+    _appThemeMode = AppThemeController.modeLight;
     _appLetter = 'A';
     _orderNoMaxLength = 4;
 
     await _setSettings();
+    await AppThemeController.instance.setModeString(_appThemeMode);
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -296,7 +318,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                               width: double.infinity,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF0F0F0),
+                                color: context.extras.chipFill,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -373,13 +395,57 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                     const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Enable Delete Functionality'),
+                      title: const Text('Enable Delete'),
                       subtitle: const Text(
                         'Allow deletion of orders, products, and categories',
                       ),
                       value: _enableDelete,
                       onChanged: (val) {
                         setState(() => _enableDelete = val);
+                      },
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Enable Reporting'),
+                      subtitle: const Text(
+                        'Allow generating sales reports on the Report screen',
+                      ),
+                      value: _enableReporting,
+                      onChanged: (val) {
+                        setState(() => _enableReporting = val);
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'App mode',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Light (default) or dark appearance for the whole app',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: AppThemeController.modeLight,
+                          label: Text('Light'),
+                          icon: Icon(Icons.light_mode_outlined),
+                        ),
+                        ButtonSegment(
+                          value: AppThemeController.modeDark,
+                          label: Text('Dark'),
+                          icon: Icon(Icons.dark_mode_outlined),
+                        ),
+                      ],
+                      selected: {_appThemeMode},
+                      onSelectionChanged: (selection) {
+                        setState(
+                          () => _appThemeMode = selection.first,
+                        );
                       },
                     ),
                     const SizedBox(height: 8),
@@ -507,15 +573,26 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: const Color(0xFFEFEFEF),
-                      foregroundColor: AppColors.textPrimary,
+                      backgroundColor: context.extras.mutedFill,
+                      foregroundColor: context.colorScheme.onSurface,
                     ),
                     child: const Text('Reset Settings'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            if (_appVersion.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'Version $_appVersion',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
           ],
         ),
       ),
