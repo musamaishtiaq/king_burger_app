@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/orderListScreen.dart';
 import '../screens/productListScreen.dart';
-import '../screens/categoryListScreen.dart';
-import '../screens/salesReportScreen.dart';
+import '../screens/userProfileScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
@@ -20,8 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     OrderListScreen(),
     ProductListScreen(),
-    CategoryListScreen(),
-    SalesReportScreen(),
+    const UserProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -78,14 +76,9 @@ class _MainScreenState extends State<MainScreen> {
                   label: Text('Products'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.category_outlined),
-                  selectedIcon: Icon(Icons.category),
-                  label: Text('Category'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.analytics_outlined),
-                  selectedIcon: Icon(Icons.analytics),
-                  label: Text('Reporting'),
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: Text('Profile'),
                 ),
               ],
             ),
@@ -144,12 +137,8 @@ class _MainScreenState extends State<MainScreen> {
                 label: 'Products',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.category, size: 22),
-                label: 'Category',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.analytics, size: 22),
-                label: 'Reporting',
+                icon: Icon(Icons.person, size: 22),
+                label: 'Profile',
               ),
             ],
           ),

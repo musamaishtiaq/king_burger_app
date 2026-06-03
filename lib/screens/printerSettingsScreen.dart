@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_colors.dart';
+import '../utils/app_prefs.dart';
 import '../utils/app_theme_controller.dart';
 import '../utils/app_theme_extensions.dart';
 import '../widgets/dropdownField.dart';
@@ -55,10 +55,10 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
   bool _enableDelete = false;
   bool _enableReporting = false;
+  bool _defaultHomeDelivery = false;
   String _appThemeMode = AppThemeController.modeLight;
   String _appLetter = 'A';
   int _orderNoMaxLength = 4;
-  String _appVersion = '';
 
   final List<String> _letters = List.generate(
     26,
@@ -75,8 +75,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final packageInfo = await PackageInfo.fromPlatform();
-    _appVersion = packageInfo.version;
 
     _storeName = prefs.getString('storeName') ?? "My Store";
     _printerIp = prefs.getString('printerIp') ?? _defaultPrinterIp;
@@ -90,6 +88,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
     _enableDelete = prefs.getBool('enableDelete') ?? false;
     _enableReporting = prefs.getBool(_prefEnableReporting) ?? false;
+    _defaultHomeDelivery =
+        prefs.getBool(AppPrefs.defaultHomeDeliveryEnabled) ?? false;
     _appThemeMode =
         prefs.getString(AppThemeController.prefKey) ??
         AppThemeController.modeLight;
@@ -127,6 +127,10 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
     await prefs.setBool('enableDelete', _enableDelete);
     await prefs.setBool(_prefEnableReporting, _enableReporting);
+    await prefs.setBool(
+      AppPrefs.defaultHomeDeliveryEnabled,
+      _defaultHomeDelivery,
+    );
     await prefs.setString(AppThemeController.prefKey, _appThemeMode);
     await prefs.setString('appLetter', _appLetter);
     await prefs.setInt('orderNoMaxLength', _orderNoMaxLength);
@@ -192,6 +196,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
     _enableDelete = false;
     _enableReporting = false;
+    _defaultHomeDelivery = false;
     _appThemeMode = AppThemeController.modeLight;
     _appLetter = 'A';
     _orderNoMaxLength = 4;
@@ -415,6 +420,17 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         setState(() => _enableReporting = val);
                       },
                     ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Default home delivery'),
+                      subtitle: const Text(
+                        'When on, new orders start as home delivery (use on a delivery device; leave off for takeaway)',
+                      ),
+                      value: _defaultHomeDelivery,
+                      onChanged: (val) {
+                        setState(() => _defaultHomeDelivery = val);
+                      },
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       'App mode',
@@ -581,17 +597,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 ),
               ],
             ),
-            if (_appVersion.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  'Version $_appVersion',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 8),
           ],
         ),

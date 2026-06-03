@@ -6,7 +6,6 @@ import '../screens/addCategoryScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
-import '../utils/main_tab_index.dart';
 import '../utils/local_image.dart';
 import '../widgets/add_new_fab.dart';
 import '../widgets/dbHelper.dart';
@@ -21,23 +20,10 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   List<Category> _categories = [];
   bool _canDelete = false;
 
-  void _onCategoryTabVisible() {
-    if (mainTabIndex.value == 2 && mounted) {
-      _refreshCategories();
-    }
-  }
-
   @override
   void initState() {
     super.initState();
-    mainTabIndex.addListener(_onCategoryTabVisible);
     _refreshCategories();
-  }
-
-  @override
-  void dispose() {
-    mainTabIndex.removeListener(_onCategoryTabVisible);
-    super.dispose();
   }
 
   Future<void> _fetchDelete() async {

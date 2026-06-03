@@ -7,6 +7,10 @@ import '../models/product.dart';
 import '../widgets/add_new_fab.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/addOrderScreen.dart';
+import '../screens/settingsScreen.dart';
+import '../screens/printerSettingsScreen.dart';
+import '../screens/salesReportScreen.dart';
+import '../screens/backupScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
@@ -87,6 +91,80 @@ class _OrderListScreenState extends State<OrderListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Orders'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              switch (value) {
+                case 'settings':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => SettingsScreen()),
+                  );
+                  break;
+                case 'printer':
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => PrinterSettingsScreen()),
+                  );
+                  break;
+                case 'reporting':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => SalesReportScreen()),
+                  );
+                  break;
+                case 'backup':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => BackupScreen()),
+                  );
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings),
+                    SizedBox(width: 8),
+                    Text('Settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'printer',
+                child: Row(
+                  children: [
+                    Icon(Icons.print),
+                    SizedBox(width: 8),
+                    Text('Printer Settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'reporting',
+                child: Row(
+                  children: [
+                    Icon(Icons.analytics),
+                    SizedBox(width: 8),
+                    Text('Sales Reports'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'backup',
+                child: Row(
+                  children: [
+                    Icon(Icons.backup),
+                    SizedBox(width: 8),
+                    Text('Backup & Restore'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _refreshOrders,

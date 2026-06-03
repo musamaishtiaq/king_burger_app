@@ -4,13 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/order.dart';
 import '../widgets/dbHelper.dart';
-import '../screens/settingsScreen.dart';
-import '../screens/printerSettingsScreen.dart';
-import '../screens/backupScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
-import '../utils/main_tab_index.dart';
+import '../utils/subscription_gate.dart';
 
 class SalesReportScreen extends StatefulWidget {
   @override
@@ -29,37 +26,24 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   bool _showItemLevelStats = false;
   final DbHelper _dbHelper = DbHelper();
 
-  static const int _reportingTabIndex = 3;
-
-  void _onReportingTabVisible() {
-    if (mainTabIndex.value == _reportingTabIndex && mounted) {
-      _refreshFromSettings();
-    }
-  }
-
   @override
   void initState() {
     super.initState();
-    mainTabIndex.addListener(_onReportingTabVisible);
     _refreshFromSettings();
-  }
-
-  @override
-  void dispose() {
-    mainTabIndex.removeListener(_onReportingTabVisible);
-    super.dispose();
   }
 
   Future<void> _refreshFromSettings() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final enabled = prefs.getBool('enableReporting') ?? false;
-    final today = DateTime.now();
-    final dateOnly = DateTime(today.year, today.month, today.day);
+    final range = FreePlanLimits.normalizeReportingRange(
+      start: FreePlanLimits.today,
+      end: FreePlanLimits.today,
+    );
     setState(() {
       _enableReporting = enabled;
-      _startDate = dateOnly;
-      _endDate = dateOnly;
+      _startDate = range.start;
+      _endDate = range.end;
       _reportLoaded = false;
       _itemReport = [];
       _ordersInRange = [];
@@ -68,19 +52,48 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     });
   }
 
+  void _applyReportingRange({DateTime? start, DateTime? end}) {
+    final range = FreePlanLimits.normalizeReportingRange(
+      start: start ?? _startDate,
+      end: end ?? _endDate,
+    );
+    _startDate = range.start;
+    _endDate = range.end;
+  }
+
   Future<void> _pickDate({required bool isStart}) async {
+    final today = FreePlanLimits.today;
+    final earliest = FreePlanLimits.reportingEarliestStart;
+
+    final DateTime firstDate;
+    final DateTime lastDate;
+    late final DateTime initialDate;
+
+    if (isStart) {
+      firstDate = earliest;
+      lastDate = today;
+      initialDate = FreePlanLimits.clampReportingDate(_startDate);
+    } else {
+      firstDate = FreePlanLimits.reportingEndFirstDate(_startDate);
+      lastDate = today;
+      var endInitial = FreePlanLimits.clampReportingDate(_endDate);
+      if (endInitial.isBefore(firstDate)) endInitial = firstDate;
+      if (endInitial.isAfter(lastDate)) endInitial = lastDate;
+      initialDate = endInitial;
+    }
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: isStart ? _startDate : _endDate,
-      firstDate: DateTime(2023),
-      lastDate: DateTime(2100),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
     if (picked != null) {
       setState(() {
         if (isStart) {
-          _startDate = picked;
+          _applyReportingRange(start: FreePlanLimits.dateOnly(picked));
         } else {
-          _endDate = picked;
+          _applyReportingRange(end: FreePlanLimits.dateOnly(picked));
         }
       });
     }
@@ -89,6 +102,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   Future<void> _generateReport() async {
     setState(() {
       _isLoading = true;
+      _applyReportingRange();
     });
 
     try {
@@ -161,65 +175,6 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sales Reports'),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) async {
-              switch (value) {
-                case 'settings':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => SettingsScreen()),
-                  );
-                  break;
-                case 'printer':
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => PrinterSettingsScreen()),
-                  );
-                  await _refreshFromSettings();
-                  break;
-                case 'backup':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => BackupScreen()),
-                  );
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'settings',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings),
-                    SizedBox(width: 8),
-                    Text('Settings'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'printer',
-                child: Row(
-                  children: [
-                    Icon(Icons.print),
-                    SizedBox(width: 8),
-                    Text('Printer Settings'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'backup',
-                child: Row(
-                  children: [
-                    Icon(Icons.backup),
-                    SizedBox(width: 8),
-                    Text('Backup & Restore'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
       body: Align(
         alignment: Alignment.topCenter,
@@ -251,6 +206,13 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Free plan: start and end dates within the last 30 days, up to today. End date cannot be before start date.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: context.colorScheme.onSurfaceVariant,
+                            ),
                       ),
                       const SizedBox(height: 8),
                       Row(

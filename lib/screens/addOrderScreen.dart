@@ -12,6 +12,7 @@ import '../models/product.dart';
 import '../models/category.dart';
 import '../widgets/dbHelper.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_prefs.dart';
 import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
 import '../utils/local_image.dart';
@@ -115,7 +116,12 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   }
 
   Future<void> _bootstrapNewOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final defaultDelivery =
+        prefs.getBool(AppPrefs.defaultHomeDeliveryEnabled) ?? false;
     await Future.wait([_fetchCategories(), _fetchProducts()]);
+    if (!mounted) return;
+    setState(() => _isCashOnDelivery = defaultDelivery);
   }
 
   Future<void> _bootstrapEditOrder() async {

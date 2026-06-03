@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../widgets/add_new_fab.dart';
 import '../widgets/dbHelper.dart';
 import '../screens/addProductScreen.dart';
+import '../screens/categoryListScreen.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_theme_extensions.dart';
 import '../utils/layout_breakpoints.dart';
@@ -112,6 +113,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.category),
+            tooltip: 'Categories',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => CategoryListScreen()),
+              );
+              if (mounted) await _refreshProducts();
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _refreshProducts,
